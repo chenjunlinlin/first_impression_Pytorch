@@ -1,0 +1,22 @@
+{
+    "path":{
+        "train_csv_path" : "../data/training_gt.csv",
+        "val_csv_path" : "../data/validation_gt.csv",
+        "train_audio_dir" : "../data/trainaudiofeat",
+        "train_video_dir" : "../data/trainframes",
+        "val_audio_dir" : "../data/validationaudiofeat",
+        "val_video_dir" : "../data/validationframes",
+        "best_model_save_dir" : "../models/BestModel/best.pth",
+        "model_save_dir" : "../models/BioModel/"
+    },
+    "para":{
+        "N" : 6,
+        "batch_size" : 128,
+        "lr" : 0.05,
+        "momentum" : 0.9,
+        "weight_decay" : 5e-4,
+        "epochs" : 100
+    },
+    "iscuda": false ,
+    "pretrain" : false
+}
