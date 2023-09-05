@@ -82,11 +82,11 @@ if __name__=='__main__' :
     train_loader = dataloader(trainset, batch_size=batch_size, shuffle=True, num_workers=4, drop_last=True)
     val_loader = dataloader(valset, batch_size=batch_size, shuffle=False, num_workers=4, drop_last=True)
 
-    writer_t = SummaryWriter("../logs/runs/train")
+    # writer_t = SummaryWriter("../logs/runs/train")
     writer_v = SummaryWriter("../logs/runs/val")
     model = model_LSTM.BIO_MODEL_LSTM()
     # model = vol_model.VOL_MODEL()
-    writer_t.add_graph(model=model, input_to_model = (torch.rand(1,3, 6, 112, 112), torch.rand(1, 6, 68)))
+    writer_v.add_graph(model=model, input_to_model = (torch.rand(1,3, 6, 112, 112), torch.rand(1, 6, 68)))
     print('--------模型初始化---------')
     if pretrain and os.path.exists(best_model_save_dir):
         model.load_state_dict(torch.load(best_model_save_dir))
@@ -103,14 +103,14 @@ if __name__=='__main__' :
 
     best_loss = 999
     for epoch in range(epochs):
-        loss = train(epoch)
-        if loss < best_loss:
-            best_loss = loss
-            torch.save(model.state_dict(), best_model_save_dir)
-        if epoch % 5 == 0:
-            torch.save(model.state_dict(), model_save_dir + '{}.pth'.format(epoch))
+        # loss = train(epoch)
+        # if loss < best_loss:
+        #     best_loss = loss
+        #     torch.save(model.state_dict(), best_model_save_dir)
+        # if epoch % 5 == 0:
+        #     torch.save(model.state_dict(), model_save_dir + '{}.pth'.format(epoch))
+        # scheduler.step()
         val(epoch)
-        scheduler.step()
-    writer_t.close()
+    # writer_t.close()
     writer_v.close()
 

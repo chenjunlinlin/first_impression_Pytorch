@@ -1,11 +1,11 @@
 {
     "path":{
         "train_csv_path" : "../data/training_gt.csv",
-        "val_csv_path" : "../data/validation_gt.csv",
+        "val_csv_path" : "../data/test_gt.csv",
         "train_audio_dir" : "../data/trainaudiofeat",
         "train_video_dir" : "../data/trainframes",
-        "val_audio_dir" : "../data/validationaudiofeat",
-        "val_video_dir" : "../data/validationframes",
+        "val_audio_dir" : "../data/testaudiofeat",
+        "val_video_dir" : "../data/testframes",
         "best_model_save_dir" : "../models/BestModel/best.pth",
         "model_save_dir" : "../models/BioModel/"
     },
@@ -18,5 +18,5 @@
         "epochs" : 100
     },
     "iscuda": false ,
-    "pretrain" : false
+    "pretrain" : true
 }

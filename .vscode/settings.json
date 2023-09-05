@@ -1,0 +1,6 @@
+{
+    "python.analysis.extraPaths": [
+        "./src_py"
+    ],
+    "python.analysis.typeCheckingMode": "off"
+}
