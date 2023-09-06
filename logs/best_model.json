@@ -1,0 +1,6 @@
+{
+    "loss": 20,
+    "name": "CVPR",
+    "MACC": 99,
+    "path": "./models/BestModel/best_None.pth"
+}
