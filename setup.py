@@ -16,8 +16,8 @@ sys.path.append('./help_scripts')
 sys.path.append('./data')
 
 import help_scripts.utils as utils
-import data.preprocessing_audiofeats as audioprocess
-import data.preprocessing_videofeats as videoprocess
+import dataset.preprocessing_audiofeats as audioprocess
+import dataset.preprocessing_videofeats as videoprocess
 import progressbar
 
 #------------------------------------------------------------
