@@ -20,5 +20,19 @@ class MY_modle(nn.modules):
     
     def forward(self, vid_input, flow_input, aud_input):
         aud_feat = self.aud_branch(aud_input)
-        vid_feat = []
-        
+        vid_feat = torch.zeros(0)
+        for i in range(self.N):
+            feat1 = self.vid_branch(vid_input[:, i, ...].squeeze(1))
+            if i == 0:
+                vid_feat = feat1.unsqueeze(1)
+            else:
+                vid_feat = torch.cat((vid_feat, feat1.unsqueeze(1)))
+        flow_feat = torch.zeros(0)
+        for i in range(self.N):
+            feat2 = self.flow_branch(flow_input[:, i, ...].squeeze(1))
+            if i == 0:
+                flow_feat = feat2.unsqueeze(1)
+            else:
+                flow_feat = torch.cat((flow_feat, feat2.unsqueeze(1)))
+
+        fusion_feat = torch.cat((aud_feat, vid_feat, flow_feat), dim=2)
