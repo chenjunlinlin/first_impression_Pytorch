@@ -11,6 +11,8 @@ import os
 from tensorboardX import SummaryWriter
 from options import *
 from datetime import datetime
+import warnings
+warnings.filterwarnings("ignore")
 
 args = get_args()
 
@@ -20,8 +22,8 @@ def train(epoch):
     train_loss = 0
     MACC_total = 0
     MACC = 0
-    for i, video_feat, flow_feat, audio_feat, label in enumerate(tqdm.tqdm(train_loader, desc='epoch:{}'.format(epoch), postfix={'MACC':MACC})):
-        if args.pretrain == False and epoch == 0 and i == 5:
+    for video_feat, flow_feat, audio_feat, label in tqdm.tqdm(train_loader, desc='epoch:{}'.format(epoch), postfix={'MACC':MACC}):
+        if args.pretrain == False and epoch == 1:
             network.set_parameter_requires_grad(model=model, freezing=False)
         if iscuda :
             video_feat, audio_feat, label = video_feat.cuda(), audio_feat.cuda(), label.cuda()
@@ -73,12 +75,12 @@ if __name__=='__main__' :
         iscuda = True
     else : iscuda = False
 
-    trainset = dataset.MY_DATASET(video_dir=args.train_video_dir, audio_dir=args.train_audio_dir, csv_file=args.train_csv_path, n=args.N)
-    valset = dataset.MY_DATASET(video_dir=args.val_video_dir, audio_dir=args.val_audio_dir, csv_file=args.val_csv_path, n=args.N)
+    trainset = dataset.MY_DATASET(audio_dir=args.train_audio_dir, csv_file=args.train_csv_path, n=args.N)
+    valset = dataset.MY_DATASET(audio_dir=args.val_audio_dir, csv_file=args.val_csv_path, n=args.N)
     
 
-    train_loader = dataloader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=8, drop_last=True, pin_memory=True)
-    val_loader = dataloader(valset, batch_size=args.batch_size, shuffle=False, num_workers=8, drop_last=True, pin_memory=True)
+    train_loader = dataloader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=12, drop_last=True, pin_memory=True)
+    val_loader = dataloader(valset, batch_size=args.batch_size, shuffle=False, num_workers=12, drop_last=True, pin_memory=True)
 
     writer_t = SummaryWriter("./logs/{}/train".format(args.name))
     writer_v = SummaryWriter("./logs/{}/val".format(args.name))
@@ -113,9 +115,10 @@ if __name__=='__main__' :
                 best_model['time'] = datetime.now
                 torch.save(model.state_dict(), os.path.join(args.best_model_save_dir , "best_{}.pth".format(args.name)))
             if epoch % 5 == 0:
+                val(epoch)
                 torch.save(model.state_dict(), os.path.join(args.model_save_dir, args.name) + '{}.pth'.format(epoch))
             scheduler.step()
-            val(epoch)
+            # val(epoch)
         f.seek(0)
         json.dump(best_model, f, indent=4, ensure_ascii=False)
         f.close()

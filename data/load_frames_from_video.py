@@ -29,7 +29,6 @@ def random_sample(N,total_frames):
     '''
     index = torch.rand(N)
     per = total_frames // N
-    print(index,per)
     for i in range(N):
         index[i] = index[i]*per + i*per
     index = index.to(dtype=torch.int)
@@ -76,7 +75,7 @@ def get_flow_from_frames(frames_list):
     return:
         flows_list
     '''
-    flows_list = np.zeros((len(frames_list), flows_list[0].shape[0], flows_list[0].shape[0], 2), dtype=np.uint8)
+    flows_list = np.zeros((len(frames_list), frames_list[0][0].shape[0], frames_list[0][0].shape[1], 2), dtype=np.uint8)
     for i, frames in enumerate(frames_list):
         cur = cv2.cvtColor(frames[0], cv2.COLOR_BGR2GRAY)
         pre = cv2.cvtColor(frames[1], cv2.COLOR_BGR2GRAY)
@@ -145,7 +144,9 @@ def get_image_face(frames_list, flows_list):
             x, y, size = get_boundingbox(face, width, height)
             cropped_face_rgb.append(frame_transform
                                     (frame[0][y:y+size, x:x+size, :]))
-            cropped_face_flow.append(flow_transform
-                                     (flows_list[i][y:y+size, x:x+size, :]))
-    return torch.tensor(np.array(cropped_face_rgb), dtype=torch.float32), \
-            torch.tensor(np.array(cropped_face_flow), dtype=torch.float32)
+            flow = flow_transform(flows_list[i][y:y+size, x:x+size, :])
+            # 将光流信息填充为3维
+            padding_data = torch.zeros((1, 224, 224))
+            flow = torch.cat((flow, padding_data))
+            cropped_face_flow.append(flow)
+    return torch.tensor(np.array(cropped_face_rgb), dtype=torch.float32),torch.tensor(np.array(cropped_face_flow), dtype=torch.float32)
