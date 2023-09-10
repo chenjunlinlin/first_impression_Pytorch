@@ -13,6 +13,10 @@ def initialize_weights(self):
 			torch.nn.init.normal_(m.weight.data, 0.1)
 			if m.bias is not None:
 				torch.nn.init.zeros_(m.bias.data)
+		elif isinstance(m, nn.Conv2d):
+			torch.nn.init.normal_(m.weight.data, 0.1)
+			if m.bias is not None:
+				torch.nn.init.zeros_(m.bias.data)
 		elif isinstance(m, nn.BatchNorm2d):
 			m.weight.data.fill_(1) 		 
 			m.bias.data.zeros_()

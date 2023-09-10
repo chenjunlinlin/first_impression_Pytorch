@@ -13,8 +13,7 @@ try:
 except ImportError:
     from torch.utils.model_zoo import load_url as load_state_dict_from_url
 from typing import Type, Any, Callable, Union, List, Optional
-from .arcface_torch.backbones import get_model
-from kornia.geometry import warp_affine
+
 
 
 
@@ -26,6 +25,25 @@ def filter_state_dict(state_dict, remove_name='fc'):
         new_state_dict[key] = state_dict[key]
     return new_state_dict
 
+def set_parameter_requires_grad(model, freezing):
+    if freezing:
+        for param in model.parameters():
+            param.requires_grad = False
+    else:
+        for param in model.parameters():
+            param.requires_grad = True
+
+def get_model(outputdim, pretrained, progress, model_name='resnet18'):
+    try:
+        model = func_dict[model_name]
+    except:
+        print("model:{} isn't existed".format(model_name))
+    instance = model(pretrained=pretrained, progress=progress)
+    set_parameter_requires_grad(instance, freezing=pretrained)
+    in_features = instance.fc.in_features
+    instance.fc = nn.Linear(in_features=in_features, out_features=outputdim)
+
+    return instance
 
 
 # adapted from https://github.com/pytorch/vision/edit/master/torchvision/models/resnet.py
@@ -173,7 +191,7 @@ class ResNet(nn.Module):
         layers: List[int],
         num_classes: int = 1000,
         zero_init_residual: bool = False,
-        use_last_fc: bool = False,
+        use_last_fc: bool = True,
         groups: int = 1,
         width_per_group: int = 64,
         replace_stride_with_dilation: Optional[List[bool]] = None,
@@ -420,6 +438,6 @@ def wide_resnet101_2(pretrained: bool = False, progress: bool = True, **kwargs: 
 
 
 func_dict = {
-    'resnet18': (resnet18, 512),
-    'resnet50': (resnet50, 2048)
+    'resnet18': resnet18,
+    'resnet50': resnet50
 }
