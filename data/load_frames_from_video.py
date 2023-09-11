@@ -112,7 +112,7 @@ def get_boundingbox(face, width, height, scale=1.3, minsize=None):
 
     return x1, y1, size_bb
 
-def get_image_face(frames_list, flows_list):
+def get_image_face(frames_list, flows_list=None):
     '''
     get face region of flow and rgb
     cropped_face_rgb:(N, W, H, 3)
@@ -144,9 +144,10 @@ def get_image_face(frames_list, flows_list):
             x, y, size = get_boundingbox(face, width, height)
             cropped_face_rgb.append(frame_transform
                                     (frame[0][y:y+size, x:x+size, :]))
-            flow = flow_transform(flows_list[i][y:y+size, x:x+size, :])
-            # 将光流信息填充为3维
-            padding_data = torch.zeros((1, 224, 224))
-            flow = torch.cat((flow, padding_data))
-            cropped_face_flow.append(flow)
+            if flows_list :
+                flow = flow_transform(flows_list[i][y:y+size, x:x+size, :])
+                # 将光流信息填充为3维
+                padding_data = torch.zeros((1, 224, 224))
+                flow = torch.cat((flow, padding_data))
+                cropped_face_flow.append(flow)
     return torch.tensor(np.array(cropped_face_rgb), dtype=torch.float32),torch.tensor(np.array(cropped_face_flow), dtype=torch.float32)

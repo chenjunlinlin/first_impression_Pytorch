@@ -21,7 +21,7 @@ parser.add_argument('--model_save_dir', default='./models/TriModel', type=str, h
 
 # 训练参数
 parser.add_argument('--N', default=6, type=int, help='视频被分成的份数')
-parser.add_argument('--batch_size', default=8, type=int)
+parser.add_argument('--batch_size', default=4, type=int)
 parser.add_argument('--lr', default=0.05)
 parser.add_argument('--momentum', default=0.9)
 parser.add_argument('--weight_decay', default=5e-3)
@@ -31,7 +31,7 @@ parser.add_argument('--pretrain', default=False)
 parser.add_argument('--model_name', default='resnet18')
 
 # 实验日志
-parser.add_argument("--name", default='test', type=str, help='实验名称')
+parser.add_argument("--name", default='no_flow', type=str, help='实验名称')
 parser.add_argument("--best_model", type=str, default="./logs/best_model.json")
 
 def get_args():

@@ -8,6 +8,7 @@ from torch.utils.data import DataLoader as dataloader
 import tqdm
 import json 
 import os
+import time
 from tensorboardX import SummaryWriter
 from options import *
 from datetime import datetime
@@ -20,25 +21,26 @@ args = get_args()
 def train(epoch):
     model.train()
     train_loss = 0
-    MACC_total = 0
     MACC = 0
     for video_feat, flow_feat, audio_feat, label in tqdm.tqdm(train_loader, desc='epoch:{}'.format(epoch), postfix={'MACC':MACC}):
         if args.pretrain == False and epoch == 1:
             network.set_parameter_requires_grad(model=model, freezing=False)
         if iscuda :
-            video_feat, audio_feat, label = video_feat.cuda(), audio_feat.cuda(), label.cuda()
+            video_feat, flow_feat, audio_feat, label = video_feat.cuda(), flow_feat.cuda(), audio_feat.cuda(), label.cuda()
         optimizer.zero_grad()
+        # train_star = time.time()
         output = model(video_feat, flow_feat, audio_feat)
+        # train_end = time.time()
+        # print("fw time: {}".format(train_end - train_star))
         loss = criterion(output, label)
         loss.backward()
         optimizer.step()
+        # opti_end = time.time()
+        # print("bp time: {}".format(opti_end - train_end))
         train_loss += loss.item()*label.size(0)
-        acc = (1 - (output - label).abs()).sum(0) / args.batch_size
-        MACC = acc.sum() / 5
-        MACC_total += MACC
-        MACC = MACC_total / (i+1)
     train_loss = train_loss/len(train_loader.dataset)
-    # acc = (1 - (output - label).abs()).sum(0) / args.batch_size 
+    acc = (1 - (output - label).abs()).sum(0) / args.batch_size 
+    MACC = acc.sum() / 5
     writer_t.add_scalar("loss", train_loss, epoch)
     writer_t.add_scalar("MACC", MACC, epoch)
     print('Epoch: {} \tTraining Loss: {:.6f} \tLr :{:.6f}'.format(epoch, train_loss, optimizer.param_groups[0]['lr']))
@@ -53,8 +55,8 @@ def val(epoch):
     MACC = 0
     for i, video_feat, audio_feat, label in enumerate(tqdm.tqdm(val_loader, desc='epoch:{}'.format(epoch), postfix={'MACC':MACC})):
         if iscuda :
-            video_feat, audio_feat, label = video_feat.cuda(), audio_feat.cuda(), label.cuda()
-        output = model(video_feat, audio_feat)
+            video_feat, flow_feat, audio_feat, label = video_feat.cuda(), flow_feat.cuda(), audio_feat.cuda(), label.cuda()
+        output = model(video_feat, flow_feat, audio_feat)
         loss = criterion(output, label)
         val_loss += loss.item()*label.size(0)
         acc = (1 - (output - label).abs()).sum(0) / args.batch_size
@@ -79,15 +81,13 @@ if __name__=='__main__' :
     valset = dataset.MY_DATASET(audio_dir=args.val_audio_dir, csv_file=args.val_csv_path, n=args.N)
     
 
-    train_loader = dataloader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=12, drop_last=True, pin_memory=True)
-    val_loader = dataloader(valset, batch_size=args.batch_size, shuffle=False, num_workers=12, drop_last=True, pin_memory=True)
+    train_loader = dataloader(trainset, batch_size=args.batch_size, shuffle=False, num_workers=8, drop_last=True, pin_memory=True)
+    val_loader = dataloader(valset, batch_size=args.batch_size, shuffle=False, num_workers=8, drop_last=True, pin_memory=True)
 
     writer_t = SummaryWriter("./logs/{}/train".format(args.name))
     writer_v = SummaryWriter("./logs/{}/val".format(args.name))
    
     model = tri_model.MY_model(args=args)
-    writer_t.add_graph(model=model.eval(), input_to_model = (torch.rand(1,6, 3, 224, 224), torch.rand(1, 6, 3, 224, 224), torch.rand(1, 6, 136)))
-
     print('--------模型初始化---------')
     if args.pretrain and os.path.exists(args.load_model_from):
         model.load_state_dict(torch.load(args.load_model_from))
@@ -97,8 +97,8 @@ if __name__=='__main__' :
         print("无预训练模型")
     if iscuda :
         print("load model to cuda")
-        model = nn.DataParallel(model.cuda(), device_ids=device)
-
+        model.cuda()
+    writer_t.add_graph(model=model.eval(), input_to_model = (torch.rand(1,6, 3, 224, 224).cuda(), torch.rand(1, 6, 3, 224, 224).cuda(), torch.rand(1, 6, 68).cuda()))
     criterion = nn.MSELoss().cuda()
     optimizer = torch.optim.Adam(model.parameters(), weight_decay = args.weight_decay, lr=args.lr)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=5, gamma=0.5)
