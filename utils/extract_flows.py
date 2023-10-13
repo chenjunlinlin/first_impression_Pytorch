@@ -9,6 +9,7 @@ import os
 from torchvision.utils import flow_to_image
 import warnings
 warnings.filterwarnings("ignore")
+import numpy as np
 
 weights = Raft_Large_Weights.DEFAULT
 transforms = weights.transforms()
@@ -46,10 +47,15 @@ def process_video(video_path, video_name, destpath_flow ):
         img1, img2 = torch.unsqueeze(img1, dim=0), torch.unsqueeze(img2, dim=0)
         list_of_flows = model(img1.to(device), img2.to(device))
         predicted_flow = list_of_flows[-1][0]
+        # print(predicted_flow.shape)
+        # flow_img = predicted_flow.to("cpu").detach().squeeze(dim=0)
+        # print(flow_img.shape)
         flow_img = flow_to_image(predicted_flow).to("cpu")
+        # flow_img = flow_img.numpy()
         output_folder = os.path.join(destpath_flow, video_name)  # Update this to the folder of your choice
         mkdir_p(output_folder)
         write_jpeg(flow_img, os.path.join(output_folder , f"{i:04d}.jpg"))
+        # np.save(os.path.join(output_folder , f"{i:04d}.npy"), flow_img)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()

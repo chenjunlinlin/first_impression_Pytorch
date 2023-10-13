@@ -4,11 +4,11 @@ import subprocess
 import tqdm
 
 
-video_root = ['train', 'test', 'validation']
-out_root = ['../dataset/trainframes_face', '../dataset/testframes_face', '../dataset/validationframes_face']
+video_root = ['train']
+out_root = ['../dataset/trainframes_face']
 suffix = '.jpg'
-flow_root = ['../dataset/train_flow', '../dataset/test_flow', '../dataset/validation_flow']
-flow_face_root = ['../dataset/trainface_flow', '../dataset/testface_flow', '../dataset/validationface_flow']
+flow_root = ['../dataset/train_flow']
+flow_face_root = ['../dataset/trainface_flow']
 
 def extract_frames(filepath, suffix, index):
 
@@ -53,7 +53,7 @@ def main():
         videos_path = os.path.join('../dataset' , dir)
         for video_path in tqdm.tqdm(os.listdir(videos_path), desc=videos_path):
             if video_path != '__MACOSX' and video_path != '.ipynb_checkpoints':
-                extract_flows(os.path.join(videos_path, video_path), suffix, i)
+                extract_frames(os.path.join(videos_path, video_path), suffix, i)
 
 
 if __name__ == '__main__':

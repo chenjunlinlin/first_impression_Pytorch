@@ -79,20 +79,14 @@ def get_image_face(img, flow):
     return None, None
 
 def save_image(destpath, vid_name, num, image, suffix):
-    vid_name = vid_name.replace(".mp4", '')
-    mkdir_p(os.path.join(destpath,vid_name))
-    file_name = os.path.join(destpath, vid_name , vid_name + "_{:04d}{}".format(num, suffix))
+    mkdir_p(os.path.join(destpath, vid_name))
+    file_name = os.path.join(destpath, vid_name , vid_name + "{:04d}{}".format(num, suffix))
     # print(file_name)
     cv2.imwrite(file_name, image)
 
-def save_flow(destpath, vid_name, num, image, suffix):
-    vid_name = vid_name.replace(".mp4", '')
-    mkdir_p(os.path.join(destpath,vid_name, "{:04d}".format(num)))
-    pre_file_name = os.path.join(destpath, vid_name , "{:04d}".format(num), "pre.{}".format(suffix))
-    cur_file_name = os.path.join(destpath, vid_name , "{:04d}".format(num), "cur.{}".format(suffix))
-    # print(file_name)
-    cv2.imwrite(pre_file_name, image[:, :, 0])
-    cv2.imwrite(cur_file_name, image[:, :, 1])
+def save_flow(destpath, vid_name, num, flow):
+    mkdir_p(os.path.join(destpath, vid_name))
+    cv2.imwrite(os.path.join(destpath, vid_name, "{:04d}.jpg".format(num)), flow)
 
 def resize_img(frame):
     frame = torch.tensor(frame)
@@ -106,10 +100,11 @@ def resize_img(frame):
 
 def process_video(vid_path, video_name, destpath_rgb, resource_flow, destpath_flow, suffix):
     videoCapture = cv2.VideoCapture(vid_path)
-    if video_name[0] == "*":
-        video_name = '-' + video_name[1:]
-
     video_name = video_name.replace(".mp4", "")
+    if video_name.startswith('*'):
+        print(video_name)
+        video_name = "-" + video_name[1:]
+        print(video_name)
     flows_path = os.path.join(resource_flow, video_name)
     i = 0
     while True:
@@ -117,12 +112,18 @@ def process_video(vid_path, video_name, destpath_rgb, resource_flow, destpath_fl
         if success:
             if i > 0:
                 flow_path = os.path.join(flows_path, f"{(i-1):04d}.jpg")
-                flow = cv2.imread(filename=flow_path)
+                if not os.path.exists(flow_path):
+                    print("文件{}有误".format(flow_path))
+                    exit()
+                flow = cv2.imread(flow_path)
                 frame = resize_img(frame=frame)
-                img, flow = get_image_face(frame, flow=flow)
-                if img.all() != None:
+                if type(flow) != type(None):
+                    img, flow = get_image_face(frame, flow=flow)   
+                else:
+                    img, flow = None, None 
+                if type(img) != type(None):
                     save_image(destpath_rgb, video_name, i, img, suffix=suffix)
-                    save_image(destpath_flow, video_name, i, flow, suffix=suffix)
+                    save_flow(destpath_flow, video_name, i, flow)
             i = i + 1
         else:
             break

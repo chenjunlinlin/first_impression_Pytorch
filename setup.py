@@ -13,7 +13,7 @@ os.environ["VECLIB_MAXIMUM_THREADS"] = "4"
 
 
 sys.path.append('./help_scripts')
-sys.path.append('./data')
+sys.path.append('./dataset')
 
 import help_scripts.utils as utils
 import dataset.preprocessing_audiofeats as audioprocess
@@ -24,8 +24,8 @@ import progressbar
 
 trainDataDownloader = './help_scripts/train_val_getDataDirect.py'
 testDataDownloader = './help_scripts/test_getDataDirect.py'
-audioPreprocessor = './data/preprocessing_audiofeats.py'
-videoreprocessor = './data/preprocessing_videofeats.py'
+audioPreprocessor = './dataset/preprocessing_audiofeats.py'
+videoreprocessor = './dataset/preprocessing_videofeats.py'
 
 #----------------------------------
 # -- prepare the logger
@@ -51,7 +51,7 @@ logger.info('downloading the training and validation data')
 
 # extract the zip files of train, validation, test to appropriate directories
 # folders = ['train', 'validation'] #, 'test']
-folders = ['test']
+folders = ['train']
 
 def newProgressBar():
 	bar = progressbar.ProgressBar(widgets=[' [', progressbar.Timer(), '] ', 
@@ -61,27 +61,27 @@ def newProgressBar():
 	return bar
 
 for folder in folders:
-	destfolder = os.path.join("./data", folder)
+	destfolder = os.path.join("./dataset", folder)
 	passwd = ''
 	# if folder == 'test':
 	# 	passwd = '.chalearnLAPFirstImpressionsFirstRoundECCVWorkshop2016.'
 		
 	# allfiles = os.listdir(os.path.join("./data", folder + 'zip'))
-	allfiles = os.listdir(os.path.join("./data", folder))
+	allfiles = os.listdir(os.path.join("./dataset", folder))
 	bar = newProgressBar()
 	
 	logger.info('processing folder ' + folder)
 	for file in bar(allfiles):
 		if file.endswith(".zip"):
 			# currentzipfile = os.path.join("./data", folder + 'zip', file)
-			currentzipfile = os.path.join("./data", folder, file)
+			currentzipfile = os.path.join("./dataset", folder, file)
 			filename = os.path.splitext(os.path.basename(currentzipfile))[0]
 			utils.mkdirs(os.path.join(destfolder, filename))
 			with zipfile.ZipFile(currentzipfile,"r") as zip_ref:
 				zip_ref.extractall(os.path.join(destfolder, filename), pwd=passwd)
 				
-	# audioprocess.audioPreprocess(destfolder)
-	videoprocess.videoPreprocess(destfolder)
+	audioprocess.audioPreprocess(destfolder)
+	# videoprocess.videoPreprocess(destfolder)
 
 #subprocess.call(['python', audioPreprocessor])
 #subprocess.call(['python', videoreprocessor])
