@@ -1,6 +1,6 @@
-from src import model_LSTM
-from src import init_model
-from src import dataset
+from model import model_LSTM
+from model import init_model
+from data import dataset
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader as dataloader
@@ -12,15 +12,15 @@ from collections import OrderedDict
 from utils.extract_frames import mkdir_p
 import json
 from datetime import datetime
-from network import set_parameter_requires_grad
+from model.network import set_parameter_requires_grad
 import math
 
 import warnings
 warnings.filterwarnings("ignore")
 
 args = options.get_args()
-os.environ["CUDA_VISIBLE_DEVICES"] = "0,1,2,3"
-devices = [0, 1, 2, 3]
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+devices = [0]
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 def train(epoch):
@@ -120,8 +120,8 @@ if __name__=='__main__' :
     # criterion2 = nn.L1Loss().cuda()
     optimizer = torch.optim.SGD(model.parameters(), weight_decay = args.weight_decay, lr=args.lr, momentum=args.momentum)
     # optimizer = torch.optim.Adam(model.parameters(), weight_decay = args.weight_decay, lr=args.lr)
-    # scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=40, gamma=0.9)
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer=optimizer, T_0=5, T_mult=2, eta_min=0.001)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=50, gamma=0.9)
+    # scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer=optimizer, T_0=5, T_mult=2, eta_min=0.001)
 
     best_model = {}
     best_model_path = os.path.join(args.logs, args.name + ".json")

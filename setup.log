@@ -1,68 +1,13 @@
-2023-08-23 13:13:30,138 [MainThread  ] [INFO ]  downloading the training and validation data
-2023-08-23 13:13:30,140 [MainThread  ] [INFO ]  processing folder train
-2023-08-23 13:14:11,502 [MainThread  ] [INFO ]  downloading the training and validation data
-2023-08-23 13:15:50,906 [MainThread  ] [INFO ]  downloading the training and validation data
-2023-08-23 13:17:31,777 [MainThread  ] [INFO ]  downloading the training and validation data
-2023-08-23 13:17:31,778 [MainThread  ] [INFO ]  processing folder train
-2023-08-23 13:55:26,493 [MainThread  ] [INFO ]  downloading the training and validation data
-2023-08-23 13:55:26,498 [MainThread  ] [INFO ]  processing folder train
-2023-08-23 13:57:26,450 [MainThread  ] [INFO ]  downloading the training and validation data
-2023-08-23 13:57:26,451 [MainThread  ] [INFO ]  processing folder train
-2023-08-23 13:59:55,366 [MainThread  ] [INFO ]  downloading the training and validation data
-2023-08-23 13:59:55,367 [MainThread  ] [INFO ]  processing folder train
-2023-08-23 14:01:00,312 [MainThread  ] [INFO ]  downloading the training and validation data
-2023-08-23 14:01:00,318 [MainThread  ] [INFO ]  processing folder train
-2023-08-23 14:02:03,181 [MainThread  ] [INFO ]  downloading the training and validation data
-2023-08-23 14:02:03,181 [MainThread  ] [INFO ]  processing folder train
-2023-08-23 14:02:59,644 [MainThread  ] [INFO ]  downloading the training and validation data
-2023-08-23 14:02:59,645 [MainThread  ] [INFO ]  processing folder train
-2023-08-23 14:03:44,163 [MainThread  ] [INFO ]  downloading the training and validation data
-2023-08-23 14:03:44,164 [MainThread  ] [INFO ]  processing folder train
-2023-08-23 14:05:00,445 [MainThread  ] [INFO ]  downloading the training and validation data
-2023-08-23 14:05:00,446 [MainThread  ] [INFO ]  processing folder train
-2023-08-23 14:06:07,725 [MainThread  ] [INFO ]  downloading the training and validation data
-2023-08-23 14:06:07,726 [MainThread  ] [INFO ]  processing folder train
-2023-08-23 14:42:36,818 [MainThread  ] [INFO ]  downloading the training and validation data
-2023-08-23 14:42:36,818 [MainThread  ] [INFO ]  processing folder train
-2023-08-23 14:42:44,849 [MainThread  ] [INFO ]  processing folder validation
-2023-08-23 14:54:44,478 [MainThread  ] [INFO ]  downloading the training and validation data
-2023-08-23 14:54:44,478 [MainThread  ] [INFO ]  processing folder train
-2023-08-23 14:54:51,791 [MainThread  ] [INFO ]  processing folder validation
-2023-08-23 15:00:53,250 [MainThread  ] [INFO ]  downloading the training and validation data
-2023-08-23 15:00:53,251 [MainThread  ] [INFO ]  processing folder train
-2023-08-23 15:01:00,597 [MainThread  ] [INFO ]  processing folder validation
-2023-08-23 15:02:17,511 [MainThread  ] [INFO ]  downloading the training and validation data
-2023-08-23 15:02:17,512 [MainThread  ] [INFO ]  processing folder train
-2023-08-23 15:18:12,308 [MainThread  ] [INFO ]  downloading the training and validation data
-2023-08-23 15:18:12,309 [MainThread  ] [INFO ]  processing folder train
-2023-08-23 16:00:33,734 [MainThread  ] [INFO ]  processing folder validation
-2023-08-23 16:23:48,219 [MainThread  ] [INFO ]  downloading the training and validation data
-2023-08-23 16:23:48,289 [MainThread  ] [INFO ]  processing folder train
-2023-08-25 14:37:28,284 [MainThread  ] [INFO ]  downloading the training and validation data
-2023-08-25 14:37:28,284 [MainThread  ] [INFO ]  processing folder train
-2023-08-25 14:37:35,393 [MainThread  ] [INFO ]  processing folder validation
-2023-08-25 15:40:55,211 [MainThread  ] [INFO ]  downloading the training and validation data
-2023-08-25 15:40:55,211 [MainThread  ] [INFO ]  processing folder train
-2023-08-25 15:51:10,919 [MainThread  ] [INFO ]  downloading the training and validation data
-2023-08-25 15:51:10,920 [MainThread  ] [INFO ]  processing folder train
-2023-08-25 15:56:02,078 [MainThread  ] [INFO ]  downloading the training and validation data
-2023-08-25 15:56:02,079 [MainThread  ] [INFO ]  processing folder train
-2023-08-25 15:58:18,097 [MainThread  ] [INFO ]  downloading the training and validation data
-2023-08-25 15:58:18,097 [MainThread  ] [INFO ]  processing folder train
-2023-08-25 15:59:48,402 [MainThread  ] [INFO ]  downloading the training and validation data
-2023-08-25 15:59:48,403 [MainThread  ] [INFO ]  processing folder train
-2023-08-25 16:08:48,504 [MainThread  ] [INFO ]  downloading the training and validation data
-2023-08-25 16:08:48,505 [MainThread  ] [INFO ]  processing folder train
-2023-08-26 05:47:43,870 [MainThread  ] [INFO ]  processing folder validation
-2023-09-01 15:20:53,962 [MainThread  ] [INFO ]  downloading the training and validation data
-2023-09-01 15:20:53,973 [MainThread  ] [INFO ]  processing folder test
-2023-09-01 15:24:40,883 [MainThread  ] [INFO ]  downloading the training and validation data
-2023-09-01 15:24:40,884 [MainThread  ] [INFO ]  processing folder test
-2023-09-01 15:26:19,762 [MainThread  ] [INFO ]  downloading the training and validation data
-2023-09-01 15:26:19,762 [MainThread  ] [INFO ]  processing folder test
-2023-09-01 15:27:03,442 [MainThread  ] [INFO ]  downloading the training and validation data
-2023-09-01 15:27:03,443 [MainThread  ] [INFO ]  processing folder test
-2023-09-01 17:01:52,528 [MainThread  ] [INFO ]  downloading the training and validation data
-2023-09-01 17:01:52,529 [MainThread  ] [INFO ]  processing folder test
-2023-09-01 17:02:13,615 [MainThread  ] [INFO ]  downloading the training and validation data
-2023-09-01 17:02:13,616 [MainThread  ] [INFO ]  processing folder test
+2023-09-25 15:12:49,472 [MainThread  ] [INFO ]  downloading the training and validation data
+2023-09-25 15:14:20,791 [MainThread  ] [INFO ]  downloading the training and validation data
+2023-09-25 15:14:20,792 [MainThread  ] [INFO ]  processing folder test
+2023-09-25 15:15:11,421 [MainThread  ] [INFO ]  downloading the training and validation data
+2023-09-25 15:15:11,421 [MainThread  ] [INFO ]  processing folder test
+2023-09-25 16:01:59,252 [MainThread  ] [INFO ]  downloading the training and validation data
+2023-09-25 16:01:59,252 [MainThread  ] [INFO ]  processing folder train
+2023-09-25 18:04:53,083 [MainThread  ] [INFO ]  processing folder validation
+2023-09-27 11:52:13,768 [MainThread  ] [INFO ]  downloading the training and validation data
+2023-09-27 11:52:13,797 [MainThread  ] [INFO ]  processing folder test
+2023-09-27 11:53:28,935 [MainThread  ] [INFO ]  downloading the training and validation data
+2023-09-27 11:53:28,936 [MainThread  ] [INFO ]  processing folder train
+2023-09-27 12:31:13,842 [MainThread  ] [INFO ]  processing folder validation

@@ -29,7 +29,7 @@ class MY_DATASET(Dataset):
         # 数据归一化
         audio_feat = (audio_feat - audio_feat.min()) / (audio_feat.max() - audio_feat.min())
         video_frames_dir = os.path.join(video_path, video_name.replace(".mp4", '') + '_aligned')
-        frames_list = os.listdir(video_frames_dir)
+        frames_list = os.listdir(video_path)
         frames_list.sort()
         flows_list = os.listdir(flows_path)
         flows_list.sort()
@@ -55,7 +55,7 @@ class MY_DATASET(Dataset):
             num = torch.randint(partition * partion_len, (partition+1) * partion_len, ())
             if frames_list[num] == ".ipynb_checkpoints":
                 num = torch.randint(partition * partion_len, (partition+1) * partion_len, ())
-            img_path = os.path.join(video_frames_dir, frames_list[num])
+            img_path = os.path.join(video_path, frames_list[num])
             if os.path.exists(img_path):
                 try:
                     img = cv2.imread(img_path)
