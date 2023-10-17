@@ -128,7 +128,7 @@ def process_video(vid_path, video_name, destpath_rgb, resource_flow, destpath_fl
         else:
             break
 
-def process(vid_path, video_name, resource_path, destpath_rgb, resource_flow, destpath_flow, suffix):
+def process(vid_path, video_name, resource_path, destpath_rgb, destpath_global, resource_flow, destpath_flow, suffix):
     videoCapture = cv2.VideoCapture(vid_path)
     video_name = video_name.replace(".mp4", "")
     if video_name.startswith('*'):
@@ -139,12 +139,15 @@ def process(vid_path, video_name, resource_path, destpath_rgb, resource_flow, de
         flows_path = os.path.join(resource_path, resource_flow[0], video_name)
         destpath_rgb = os.path.join(resource_path, destpath_rgb[0])
         destpath_flow = os.path.join(resource_path, destpath_flow[0])
+        destpath_global = os.path.join(resource_path, destpath_global[0])
     else:
         flows_path = os.path.join(resource_path, resource_flow[1], video_name)
         destpath_rgb = os.path.join(resource_path, destpath_rgb[1])
         destpath_flow = os.path.join(resource_path, destpath_flow[1])
+        destpath_global = os.path.join(resource_path, destpath_global[1])
     mkdir_p(destpath_flow)
     mkdir_p(destpath_rgb)
+    mkdir_p(destpath_global)
     i = 0
     while True:
         success, frame = videoCapture.read()
@@ -155,7 +158,7 @@ def process(vid_path, video_name, resource_path, destpath_rgb, resource_flow, de
                     print("文件{}有误".format(flow_path))
                     exit()
                 flow = cv2.imread(flow_path)
-                h, w, _ = flow.shape
+                h, w= frame.shape[0], frame.shape[1]
                 # frame = resize_img(frame=frame)
                 flow = resize_img(frame=flow, height=h, width=w)
                 if not (flow is None):
@@ -163,6 +166,7 @@ def process(vid_path, video_name, resource_path, destpath_rgb, resource_flow, de
                 else:
                     img, flow = None, None 
                 if not (img is None):
+                    save_image(destpath_global, video_name, i, frame, suffix=suffix)
                     save_image(destpath_rgb, video_name, i, img, suffix=suffix)
                     save_flow(destpath_flow, video_name, i, flow)
             i = i + 1

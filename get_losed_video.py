@@ -2,14 +2,15 @@ from utils import extract_frames, extract_flows
 import multiprocessing
 import tqdm
 import os
+import pandas as pd
 
 resource_path = "/raid5/chenjunlin/DataSets/first_impression/"
-destpath_rgb = ["lose_trainframes_face", "lose_validationframes_face"]
-resource_flow = ["lose_train_flow", "lose_validatin_flow"]
-destpath_flow = ["lose_trainface_flow", "lose_validationface_flow"]
+destpath_rgb = ["trainframes_face2", "validationframes_face2"]
+destpath_global = ["trainframes_global", "validationframes_global"]
+resource_flow = ["train_flow", "validatin_flow"]
+destpath_flow = ["trainface_flow2", "validationface_flow2"]
 suffix = ".jpg"
-
-add_flow_path = ["lose_train_flow", "lose_validatin_flow"]
+add_flow_path = []
 
 def process_video(videos_path, i):
     if i == 0:
@@ -19,6 +20,7 @@ def process_video(videos_path, i):
                                 video_name=video_name,
                                 resource_path=resource_path,
                                 destpath_rgb=destpath_rgb,
+                                destpath_global = destpath_global,
                                 resource_flow=resource_flow,
                                 destpath_flow=destpath_flow,
                                 suffix=suffix
@@ -30,6 +32,7 @@ def process_video(videos_path, i):
                                 video_name=video_name,
                                 resource_path=resource_path,
                                 destpath_rgb=destpath_rgb,
+                                destpath_global = destpath_global,
                                 resource_flow=resource_flow,
                                 destpath_flow=destpath_flow,
                                 suffix=suffix
@@ -53,36 +56,16 @@ def process_flow(videos_path, i):
 
 if __name__ == "__main__":
 
-    loses_path = []
-    N = 12
-    N2 = 2
+    N = 16
 
-    with open("/raid5/chenjunlin/first-impressions-master/dataset/lose.txt", 'r') as f:
-        loses = f.readline()
-        loses_path = loses.split(',')[:-1]
-    
-    print("未处理完成的视频共有：", len(loses_path))
-
-    # processes_flow = []
-    # for i in range(N2):
-    #     per_len = len(loses_path) // N2
-    #     if i == (N2 - 1):
-    #         part_loses_path = loses_path[i*per_len:]
-    #     else:
-    #         part_loses_path = loses_path[i*per_len:(i+1)*per_len]
-    #     process = multiprocessing.Process(target=process_flow, args=(part_loses_path, i))
-    #     processes_flow.append(process)
-    #     process.start()
-    # for process in processes_flow:
-    #     process.join()
-
+    videos_list = pd.read_csv("dataset/train.csv")["VideoName"]
     processes = []
     for i in range(N):
-        per_len = len(loses_path) // N
+        per_len = len(videos_list) // N
         if i == (N - 1):
-            part_loses_path = loses_path[i*per_len:]
+            part_loses_path = videos_list[i*per_len:]
         else:
-            part_loses_path = loses_path[i*per_len:(i+1)*per_len]
+            part_loses_path = videos_list[i*per_len:(i+1)*per_len]
         process = multiprocessing.Process(target=process_video, args=(part_loses_path, i))
         processes.append(process)
         process.start()
