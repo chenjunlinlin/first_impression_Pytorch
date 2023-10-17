@@ -20,22 +20,23 @@ class Bell_loss(nn.Module):
         loss = self.gama * (1 - math.e ** (-(((y - y_hat)**2) / (2* self.sita ** 2))))
         return torch.mean(loss)
 
-class Auio_model(nn.Module):
-    def __init__(self, num_audio, *args, **kwargs) -> None:
-        super(Auio_model, self).__init__(*args, **kwargs)
+class Audio_model(nn.Module):
+    def __init__(self, *args, **kwargs) -> None:
+        super(Audio_model, self).__init__(*args, **kwargs)
         self.conv1d_layer1 = nn.Conv1d(in_channels=68, out_channels=68, kernel_size=3, stride=2)
         self.conv1d_layer2 = nn.Conv1d(in_channels=68, out_channels=128, kernel_size=3, stride=2)
-        self.embeding = nn.Conv1d(in_channels=128, out_channels=512)
+        self.embeding = nn.Linear(128, 512)
         self.trans_layer = nn.TransformerEncoderLayer(d_model=512, nhead=8, dropout=0.2, dim_feedforward=2048, batch_first=True)
         self.transfomer = nn.TransformerEncoder(encoder_layer=self.trans_layer, num_layers=6)
-        self.pos_embedding = nn.Parameter(torch.randn(1, num_audio, 512))
+        self.pos_embedding = nn.Parameter(torch.randn(1, 74, 512))
 
     def forward(self, audio_input):
         X = F.relu(self.conv1d_layer1(audio_input))
-        X = F.relu(self.conv1d_layer2(X))
+        X = F.relu(self.conv1d_layer2(X)) # X:(N, C, L)
+        X = torch.transpose(X, 1, 2)
         X = F.relu(self.embeding(X))
         X += self.pos_embedding
-        X = F.relu(self.transfomer(X)[:-1:])
+        X = F.relu(self.transfomer(X)[:, -1, :])
 
         return X
     
@@ -44,7 +45,7 @@ class BIO_MODEL_LSTM(nn.Module):
         super(BIO_MODEL_LSTM, self).__init__()
 
         # audio_branch
-        self.audio_branch = Auio_model(arg.num_audio)
+        self.audio_branch = Audio_model()
 
         self.vid_branch = network.get_model(outputdim=200, pretrained= not arg.pretrain, progress=True, model_name=arg.backbone)
         self.flow_branch = network.get_model(outputdim=200, pretrained= not arg.pretrain, progress=True, model_name=arg.backbone)
@@ -52,7 +53,7 @@ class BIO_MODEL_LSTM(nn.Module):
         self.dropout2 = nn.Dropout(0.5)
         # self.lstm1 = nn.LSTM(432, 221, batch_first=True)
         # self.lstm2 = nn.LSTM(221, 64, batch_first=True)
-        self.pos_embedding = nn.Parameter(torch.randn(1, arg.N, 512))
+        self.pos_embedding = nn.Parameter(torch.randn(arg.batch_size, arg.N, 512))
         self.trans_layer = nn.TransformerEncoderLayer(d_model=512, nhead=8, dropout=0.5, dim_feedforward=2048, batch_first=True)
         self.timemodel = nn.TransformerEncoder(encoder_layer=self.trans_layer, num_layers=3)
         self.embeding = nn.Linear(232, 512)
