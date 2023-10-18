@@ -36,7 +36,7 @@ def train(epoch):
         if epoch == 1:
             set_parameter_requires_grad(model=model.module, freezing=False)
         optimizer.zero_grad()
-        output, aux_output = model(video_feat, audio_feat)
+        output = model(video_feat, audio_feat)
         loss = criterion1(output, label)
         bel_loss = criterion2(output, label)
         total_loss = bel_loss + loss
@@ -51,7 +51,7 @@ def train(epoch):
     writer_t.add_scalar("Bl_loss", train_Blloss, epoch)
     writer_t.add_scalar("MACC", MACCS / total_iter, epoch)
     writer_t.add_scalar("Lr", optimizer.param_groups[0]['lr'], epoch)
-    print('Epoch: {} \tTraining Loss: {:.6f} \tBell_Loss : {} \tLr :{} '.format(epoch, train_loss, train_Blloss, optimizer.param_groups[0]['lr']))
+    print('Epoch: {} \tTraining Loss: {:.6f} \tBell_Loss : {:.6f} \tLr :{:.6f}'.format(epoch, train_loss, train_Blloss, optimizer.param_groups[0]['lr']))
     print('Epoch: {} \tTraining MACC: {:.6f}'.format(epoch, MACCS / total_iter))
     torch.cuda.empty_cache()
 
@@ -67,7 +67,7 @@ def val(epoch):
             if iscuda :
                 # video_feat, flow_feat, audio_feat, label = video_feat.cuda(), flow_feat.cuda(), audio_feat.cuda(), label.cuda()
                 video_feat, audio_feat, label = video_feat.cuda(), audio_feat.cuda(), label.cuda()
-            output, _ = model(video_feat, audio_feat)
+            output = model(video_feat, audio_feat)
             loss = criterion1(output, label) 
             val_loss += loss.item()*label.size(0)
             acc = (1 - (output - label).abs()).sum(0) / args.batch_size 
@@ -123,26 +123,16 @@ if __name__=='__main__' :
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=50, gamma=0.9)
     # scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer=optimizer, T_0=5, T_mult=2, eta_min=0.001)
 
-    best_model = {}
+    best_model = args.__dict__
     best_model_path = os.path.join(args.logs, args.name + ".json")
-    best_model['name'] = args.name
-    best_model["batch_size"] = args.batch_size
-    best_model["lr"] = args.lr
-    best_model["momentum"] = args.momentum
-    best_model["weight_decay"] = args.weight_decay
-    best_model["epochs"] = args.epochs
-    best_model["backbone"] = args.backbone
-    best_model['loss'] = 999
-    best_model['val_loss'] = 999
-    best_model['gama'] = args.gama
-    best_model['sita'] = args.sita
+    
     for epoch in range(args.epochs):
         if os.path.exists(best_model_path):
             with open(best_model_path, 'r') as f:
                 logs = json.load(f)
                 best_model["loss"] = logs["loss"]
         loss, MACC = train(epoch)
-        if loss < best_model['loss'] or best_model['loss'] == None:
+        if 'loss' not in best_model or loss < best_model['loss']:
             best_model['loss'] = loss
             best_model['MACC'] = MACC.item()
             best_model['path'] = os.path.join(args.best_model_save_dir , "best_{}.pth".format(args.name))
@@ -152,7 +142,7 @@ if __name__=='__main__' :
             json.dump(best_model, f, indent=4, ensure_ascii=False)
         if epoch % 5 == 0 and epoch != 0:
             val_loss, val_MACC = val(epoch)
-            if val_loss < best_model['val_loss'] or best_model['val_loss'] == None:
+            if 'val_loss' not in best_model or val_loss < best_model['val_loss']:
                 best_model['val_loss'] = val_loss
                 best_model['val_MACC'] = val_MACC.item()
                 best_model['epoch num'] = epoch

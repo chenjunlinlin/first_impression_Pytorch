@@ -19,90 +19,51 @@ class Bell_loss(nn.Module):
     def forward(self, y_hat, y):
         loss = self.gama * (1 - math.e ** (-(((y - y_hat)**2) / (2* self.sita ** 2))))
         return torch.mean(loss)
-
-class Audio_model(nn.Module):
-    def __init__(self, *args, **kwargs) -> None:
-        super(Audio_model, self).__init__(*args, **kwargs)
-        self.conv1d_layer1 = nn.Conv1d(in_channels=68, out_channels=68, kernel_size=3, stride=2)
-        self.conv1d_layer2 = nn.Conv1d(in_channels=68, out_channels=128, kernel_size=3, stride=2)
-        self.embeding = nn.Linear(128, 512)
-        self.trans_layer = nn.TransformerEncoderLayer(d_model=512, nhead=8, dropout=0.2, dim_feedforward=2048, batch_first=True)
-        self.transfomer = nn.TransformerEncoder(encoder_layer=self.trans_layer, num_layers=6)
-        self.pos_embedding = nn.Parameter(torch.randn(1, 74, 512))
-
-    def forward(self, audio_input):
-        X = F.relu(self.conv1d_layer1(audio_input))
-        X = F.relu(self.conv1d_layer2(X)) # X:(N, C, L)
-        X = torch.transpose(X, 1, 2)
-        X = F.relu(self.embeding(X))
-        X += self.pos_embedding
-        X = F.relu(self.transfomer(X)[:, -1, :])
-
-        return X
     
 class BIO_MODEL_LSTM(nn.Module):
     def __init__(self, arg, **args):
         super(BIO_MODEL_LSTM, self).__init__()
 
         # audio_branch
-        self.audio_branch = Audio_model()
+        self.audio_branch = network.get_audio_model()
 
-        self.vid_branch = network.get_model(outputdim=200, pretrained= not arg.pretrain, progress=True, model_name=arg.backbone)
-        self.flow_branch = network.get_model(outputdim=200, pretrained= not arg.pretrain, progress=True, model_name=arg.backbone)
+
+        self.video_branch = network.get_model(args=arg)
+
+        self.timemodel = network.get_time_model(args=arg)
+
         self.dropout1 = nn.Dropout(0.5)
-        self.dropout2 = nn.Dropout(0.5)
-        # self.lstm1 = nn.LSTM(432, 221, batch_first=True)
-        # self.lstm2 = nn.LSTM(221, 64, batch_first=True)
-        self.pos_embedding = nn.Parameter(torch.randn(arg.batch_size, arg.N, 512))
-        self.trans_layer = nn.TransformerEncoderLayer(d_model=512, nhead=8, dropout=0.5, dim_feedforward=2048, batch_first=True)
-        self.timemodel = nn.TransformerEncoder(encoder_layer=self.trans_layer, num_layers=3)
-        self.embeding = nn.Linear(232, 512)
-        self.aux_linear = nn.Linear(512, 5)
-        self.linear1 = nn.Linear(512, 224)
-        self.linear2 = nn.Linear(224, 64)
-        self.linear3 = nn.Linear(64, 5)
-        self.init_model()
+        self.linear1 = nn.Linear(arg.dim_img+arg.dim_audio, 128)
+        self.linear2 = nn.Linear(128, 5)
 
-			 
-    def init_model(self):
-        for m in self.audio_branch:
-            torch.nn.init.normal_(m.weight.data, 0.1)
-            if m.bias is not None:
-                  torch.nn.init.zeros_(m.bias.data)
-        torch.nn.init.normal_(self.linear2.weight.data, 0.1)
-        if self.linear2.bias is not None:
-            torch.nn.init.zeros_(self.linear2.bias.data)
-                            
+    def parallel_extract(self, net, input):
+        """
+        batch, N, C, H, W --> batch*N, C, H, W
+        then compute it by net
+        batch*N, C, H, W --> batch, N, dim_feat 
+        """
+        batch, N, C, H, W = input.shape[0], input.shape[1], input.shape[2], input.shape[3], input.shape[4]
+        feat = input.reshape((batch*N, C, H, W))
+        feat = net(feat)
+        dim_feat = feat.shape[-1]
+        feat = feat.reshape((batch, N, dim_feat))
+
+        return feat
 
     def forward(self, video_input, audio_input):
         audio_feat = self.audio_branch(audio_input)
 
-        batch, N, C, H, W = video_input.shape[0], video_input.shape[1], video_input.shape[2], video_input.shape[3], video_input.shape[4]
-        video_feat = video_input.reshape((batch*N, C, H, W))
-        video_feat = self.vid_branch(video_feat)
-        dim_vid = video_feat.shape[-1]
-        video_feat = video_feat.reshape((batch, N, dim_vid))
+        video_feat = self.parallel_extract(net=self.video_branch,
+                                           input=video_input)
         
-        # flow_feat = flow_input.reshape((batch*N, C, H, W))
-        # flow_feat = self.flow_branch(flow_feat)
-        # dim_flow = flow_feat.shape[-1]
-        # flow_feat = flow_feat.reshape((batch, N, dim_flow))
-        
-        fusion_feat = torch.cat((audio_feat, video_feat), 2)
+        video_feat = self.timemodel(video_feat)
+        fusion_feat = torch.cat((video_feat, audio_feat), dim=2)
         feat1 = self.dropout1(fusion_feat)
-        src = self.embeding(feat1)
-        src += self.pos_embedding
-        feat2 = self.timemodel(src)
-        feat3 = self.dropout2(feat2)
-        feat4 = self.linear1(feat3)
-        feat5 = self.linear2(feat4)
-        feat6 = self.linear3(feat5)
-        feat7 = nn.Sigmoid()(feat6)
-        aux_feat = self.aux_linear(feat2)
-        aux_feat = nn.Sigmoid()(aux_feat)
-        result = feat7.sum(1) / 6
-        aux_result = aux_feat.sum(1) / 6
+        feat2 = self.linear1(feat1)
+        feat3 = self.linear2(feat2)
+        feat3 = torch.squeeze(feat3)
+        result = F.softmax(feat3)
 
-        return result, aux_result
+        return result
 
 

@@ -14,7 +14,7 @@ except ImportError:
     from torch.utils.model_zoo import load_url as load_state_dict_from_url
 from typing import Type, Any, Callable, Union, List, Optional
 
-
+from vit_pytorch import ViT
 
 
 def filter_state_dict(state_dict, remove_name='fc'):
@@ -33,7 +33,7 @@ def set_parameter_requires_grad(model, freezing):
         for param in model.parameters():
             param.requires_grad = True
 
-def get_model(outputdim, pretrained, progress, model_name='resnet18'):
+def get_resnet_model(outputdim, pretrained, progress, model_name='resnet18'):
     try:
         model = func_dict[model_name]
     except:
@@ -436,6 +436,92 @@ def wide_resnet101_2(pretrained: bool = False, progress: bool = True, **kwargs: 
     return _resnet('wide_resnet101_2', Bottleneck, [3, 4, 23, 3],
                    pretrained, progress, **kwargs)
 
+class Time_model(nn.Module):
+    def __init__(self, arg, *args, **kwargs) -> None:
+        super(Time_model, self).__init__(*args, **kwargs)
+
+        self.pos_embedding = nn.Parameter(torch.randn(1, arg.N, 512))
+        self.embeding = nn.Linear(arg.dim_img, 512)
+        self.trans_layer = nn.TransformerEncoderLayer(d_model=512, nhead=8, dropout=0.2, dim_feedforward=2048, batch_first=True)
+        self.transformer = nn.TransformerEncoder(encoder_layer=self.trans_layer, num_layers=3)
+        self.dropout = nn.Dropout(0.2)
+        self.mlp_layer = nn.Linear(512, arg.dim_img)
+
+    def forward(self, input):
+        X = F.relu(self.embeding(input))
+        X += self.pos_embedding
+        X = self.dropout(X)
+        X = F.relu(self.transformer(X)[:, -1, :])
+        X = F.relu(self.mlp_layer(X))
+        
+        return X
+
+class Audio_model(nn.Module):
+    def __init__(self, arg, *args, **kwargs) -> None:
+        super(Audio_model, self).__init__(*args, **kwargs)
+
+        self.conv1d_layer1 = nn.Conv1d(in_channels=68, out_channels=68, kernel_size=3, stride=2)
+        self.conv1d_layer2 = nn.Conv1d(in_channels=68, out_channels=128, kernel_size=3, stride=2)
+        self.embeding = nn.Linear(128, 512)
+        self.pos_embedding = nn.Parameter(torch.randn(1, 74, 512))
+        self.trans_layer = nn.TransformerEncoderLayer(d_model=512, nhead=8, dropout=0.2, dim_feedforward=2048, batch_first=True)
+        self.transfomer = nn.TransformerEncoder(encoder_layer=self.trans_layer, num_layers=6)
+        self.mpl_layer = nn.Linear(512, arg.dim_audio)
+        
+
+
+    def forward(self, audio_input):
+        X = F.relu(self.conv1d_layer1(audio_input))
+        X = F.relu(self.conv1d_layer2(X)) # X:(N, C, L)
+        X = torch.transpose(X, 1, 2)
+        X = F.relu(self.embeding(X))
+        X += self.pos_embedding
+        X = F.relu(self.transfomer(X)[:, -1, :])
+        X = F.relu(self.mpl_layer(X))
+
+        return X
+    
+def get_audio_model():
+    """
+    get model of audio
+    """
+    instance = Audio_model()
+    return instance
+
+def get_vit_model(image_size = 256, patch_size = 32, num_classes = 1000, dim = 1024,depth = 6, heads = 16, mlp_dim = 2048, dropout = 0.1,emb_dropout = 0.1
+):
+    """
+    get model of vit
+
+    num_classes is dim of feature about img
+    """
+    instance = ViT(
+        image_size = image_size,
+        patch_size = patch_size,
+        num_classes = num_classes,
+        dim = dim,
+        depth = depth,
+        heads = heads,
+        mlp_dim = mlp_dim,
+        dropout = dropout,
+        emb_dropout = emb_dropout
+    )
+    return instance
+
+def get_model(args):
+    """
+    return backbone: vit or resnet"""
+    if args.backbone == "vit":
+        return get_vit_model(image_size=args.img_size, num_classes=args.dim_img)
+    else:
+        return get_resnet_model(outputdim=args.dim_img, pretrained= not args.pretrain, progress=True, model_name=args.backbone)
+
+def get_time_model(args):
+    """
+    return model of modeling time
+    """
+    instance = Time_model(arg=args)
+    return instance
 
 func_dict = {
     'resnet18': resnet18,
