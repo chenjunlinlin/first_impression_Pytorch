@@ -1,5 +1,4 @@
 import threading
-from data.dataset import _get_sampler
 import os
 from PIL import Image
 import torch

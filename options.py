@@ -8,13 +8,14 @@ parser.add_argument('--val_csv_path', default='./dataset/val_gt.csv',    help='�
 parser.add_argument('--train_audio_dir', default='./dataset/trainaudiofeat', type=str, help='训练音频目录')
 parser.add_argument('--val_audio_dir', default='./dataset/validationaudiofeat', 
                     type=str, help='测试音频目录')
-parser.add_argument('--train_video_dir', default='./dataset/trainframes', 
+parser.add_argument('--train_video_dir', default='./dataset/trainframes_face2', 
                     type=str, help='训练视频路径')
-parser.add_argument('--train_flow_dir', default='./dataset/train_flow', 
+parser.add_argument('--train_flow_dir', default='./dataset/train_flow2', 
                     type=str, help='训练视频路径')
-parser.add_argument('--val_video_dir', default='./dataset/validationframes', 
+parser.add_argument('--val_video_dir', 
+                    default='./dataset/validationframes_face2', 
                     type=str, help='测试视频路径')
-parser.add_argument('--val_flow_dir', default='./dataset/validation_flow', 
+parser.add_argument('--val_flow_dir', default='./dataset/validation_flow2', 
                     type=str, help='测试视频路径')
 parser.add_argument('--best_model_save_dir', default='./models/BestModel', type=str, help='最优模型路径')
 parser.add_argument('--model_save_dir', default='./models/BioModel/', type=str, help='模型保存地址')
@@ -37,7 +38,8 @@ parser.add_argument('--img_size', default=224)
 parser.add_argument('--dim_img', default=200)
 parser.add_argument('--dim_audio', default=100)
 
-parser.add_argument('--name', default='trans_1', type=str)
+parser.add_argument('--name', default='test')
+
 parser.add_argument('--logs', type=str, default='./logs')
 
 args = parser.parse_args()

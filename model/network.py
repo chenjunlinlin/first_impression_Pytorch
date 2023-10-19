@@ -448,13 +448,13 @@ class Time_model(nn.Module):
         self.mlp_layer = nn.Linear(512, arg.dim_img)
 
     def forward(self, input):
-        X = F.relu(self.embeding(input))
-        X += self.pos_embedding
-        X = self.dropout(X)
-        X = F.relu(self.transformer(X)[:, -1, :])
-        X = F.relu(self.mlp_layer(X))
+        X1 = self.embeding(input)
+        X2 = self.pos_embedding + X1
+        X3 = self.dropout(X2)
+        X4 = F.relu(self.transformer(X3)[:, -1, :])
+        result = F.relu(self.mlp_layer(X4))
         
-        return X
+        return result
 
 class Audio_model(nn.Module):
     def __init__(self, arg, *args, **kwargs) -> None:
@@ -471,21 +471,22 @@ class Audio_model(nn.Module):
 
 
     def forward(self, audio_input):
+        audio_input = torch.transpose(audio_input, dim0=1, dim1=2)
         X = F.relu(self.conv1d_layer1(audio_input))
         X = F.relu(self.conv1d_layer2(X)) # X:(N, C, L)
         X = torch.transpose(X, 1, 2)
         X = F.relu(self.embeding(X))
-        X += self.pos_embedding
+        X = self.pos_embedding + X
         X = F.relu(self.transfomer(X)[:, -1, :])
         X = F.relu(self.mpl_layer(X))
 
         return X
     
-def get_audio_model():
+def get_audio_model(args):
     """
     get model of audio
     """
-    instance = Audio_model()
+    instance = Audio_model(arg=args)
     return instance
 
 def get_vit_model(image_size = 256, patch_size = 32, num_classes = 1000, dim = 1024,depth = 6, heads = 16, mlp_dim = 2048, dropout = 0.1,emb_dropout = 0.1

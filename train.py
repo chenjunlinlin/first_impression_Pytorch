@@ -14,6 +14,7 @@ import json
 from datetime import datetime
 from model.network import set_parameter_requires_grad
 import math
+from utils import logs
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -33,7 +34,7 @@ def train(epoch):
         if iscuda :
             # video_feat, flow_feat, audio_feat, label = video_feat.cuda(), flow_feat.cuda(), audio_feat.cuda(), label.cuda()
             video_feat, audio_feat, label = video_feat.cuda(), audio_feat.cuda(), label.cuda()
-        if epoch == 1:
+        if epoch == 1 and args.backbone.startswith("resnet"):
             set_parameter_requires_grad(model=model.module, freezing=False)
         optimizer.zero_grad()
         output = model(video_feat, audio_feat)
@@ -51,7 +52,7 @@ def train(epoch):
     writer_t.add_scalar("Bl_loss", train_Blloss, epoch)
     writer_t.add_scalar("MACC", MACCS / total_iter, epoch)
     writer_t.add_scalar("Lr", optimizer.param_groups[0]['lr'], epoch)
-    print('Epoch: {} \tTraining Loss: {:.6f} \tBell_Loss : {:.6f} \tLr :{:.6f}'.format(epoch, train_loss, train_Blloss, optimizer.param_groups[0]['lr']))
+    print('Epoch: {} \tTraining Loss: {:.6f} \tLr :{:.6f}'.format(epoch, train_loss, optimizer.param_groups[0]['lr']))
     print('Epoch: {} \tTraining MACC: {:.6f}'.format(epoch, MACCS / total_iter))
     torch.cuda.empty_cache()
 
@@ -95,20 +96,22 @@ if __name__=='__main__' :
     train_loader = dataloader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, drop_last=True, pin_memory=True)
     val_loader = dataloader(valset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers, drop_last=True, pin_memory=True)
 
-    writer_t = SummaryWriter("./logs/{}/train".format(args.name))
-    writer_v = SummaryWriter("./logs/{}/val".format(args.name))
+    exp_name = logs.get_exp_name(args=args)
+
+    writer_t = SummaryWriter("{}/{}/train".format(args.logs, exp_name))
+    writer_v = SummaryWriter("{}/{}/val".format(args.logs, exp_name))
     model = model_LSTM.BIO_MODEL_LSTM(arg=args)
     # writer_t.add_graph(model=model, input_to_model = (torch.rand(6, 6, 3, 224, 224), torch.rand(6, 6, 68)))
     # model = vol_model.VOL_MODEL()
     print('--------模型初始化---------')
-    if args.pretrain and os.path.exists(os.path.join(args.best_model_save_dir, "best_{}.pth".format(args.name))):
-        state_dict = torch.load(os.path.join(args.best_model_save_dir, "best_{}.pth".format(args.name)))
+    if args.pretrain and os.path.exists(os.path.join(args.best_model_save_dir, "best_{}.pth".format(exp_name))):
+        state_dict = torch.load(os.path.join(args.best_model_save_dir, "best_{}.pth".format(exp_name)))
         new_state_dict = OrderedDict()
         for k in state_dict:
             new_k = k.replace('module.', '')
             new_state_dict[new_k] = state_dict[k]
         model.load_state_dict(state_dict=new_state_dict)
-        print("预训练模型加载成功：{}".format(os.path.join(args.best_model_save_dir, "best_{}.pth".format(args.name))))
+        print("预训练模型加载成功：{}".format(os.path.join(args.best_model_save_dir, "best_{}.pth".format(exp_name))))
     else:
         # init_model.initialize_weights(model)
         print("无预训练模型")
@@ -124,7 +127,7 @@ if __name__=='__main__' :
     # scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer=optimizer, T_0=5, T_mult=2, eta_min=0.001)
 
     best_model = args.__dict__
-    best_model_path = os.path.join(args.logs, args.name + ".json")
+    best_model_path = os.path.join(args.logs, exp_name + ".json")
     
     for epoch in range(args.epochs):
         if os.path.exists(best_model_path):
@@ -135,9 +138,9 @@ if __name__=='__main__' :
         if 'loss' not in best_model or loss < best_model['loss']:
             best_model['loss'] = loss
             best_model['MACC'] = MACC.item()
-            best_model['path'] = os.path.join(args.best_model_save_dir , "best_{}.pth".format(args.name))
+            best_model['path'] = os.path.join(args.best_model_save_dir , "best_{}.pth".format(exp_name))
             best_model['time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            torch.save(model.state_dict(), os.path.join(args.best_model_save_dir , "best_{}.pth".format(args.name)))
+            torch.save(model.state_dict(), os.path.join(args.best_model_save_dir , "best_{}.pth".format(exp_name)))
         with open(best_model_path, 'w') as f:
             json.dump(best_model, f, indent=4, ensure_ascii=False)
         if epoch % 5 == 0 and epoch != 0:
@@ -146,7 +149,7 @@ if __name__=='__main__' :
                 best_model['val_loss'] = val_loss
                 best_model['val_MACC'] = val_MACC.item()
                 best_model['epoch num'] = epoch
-            torch.save(model.state_dict(), os.path.join(args.model_save_dir, args.name) + '{}.pth'.format(epoch))
+            torch.save(model.state_dict(), os.path.join(args.model_save_dir, exp_name) + '{}.pth'.format(epoch))
         scheduler.step()
     writer_t.close()
     writer_v.close()

@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import os
 import torch.nn.functional as F
+from einops import rearrange
 
 import sys
 current_path = os.path.dirname(os.path.realpath(__file__))
@@ -25,7 +26,7 @@ class BIO_MODEL_LSTM(nn.Module):
         super(BIO_MODEL_LSTM, self).__init__()
 
         # audio_branch
-        self.audio_branch = network.get_audio_model()
+        self.audio_branch = network.get_audio_model(args=arg)
 
 
         self.video_branch = network.get_model(args=arg)
@@ -36,33 +37,32 @@ class BIO_MODEL_LSTM(nn.Module):
         self.linear1 = nn.Linear(arg.dim_img+arg.dim_audio, 128)
         self.linear2 = nn.Linear(128, 5)
 
-    def parallel_extract(self, net, input):
+    def parallel_extract(self, input):
         """
         batch, N, C, H, W --> batch*N, C, H, W
         then compute it by net
         batch*N, C, H, W --> batch, N, dim_feat 
         """
-        batch, N, C, H, W = input.shape[0], input.shape[1], input.shape[2], input.shape[3], input.shape[4]
-        feat = input.reshape((batch*N, C, H, W))
-        feat = net(feat)
-        dim_feat = feat.shape[-1]
-        feat = feat.reshape((batch, N, dim_feat))
+        B, N, c, h, w = input.shape
+        input = rearrange(input, 'b n c h w -> (b n) c h w')
+        feat = self.video_branch(input)
+        feat = rearrange(feat, '(b n) d -> b n d', b=B, n=N)
 
         return feat
 
     def forward(self, video_input, audio_input):
         audio_feat = self.audio_branch(audio_input)
 
-        video_feat = self.parallel_extract(net=self.video_branch,
-                                           input=video_input)
+        video_feat = self.parallel_extract(input=video_input)
         
         video_feat = self.timemodel(video_feat)
-        fusion_feat = torch.cat((video_feat, audio_feat), dim=2)
+
+        fusion_feat = torch.cat((video_feat, audio_feat), dim=1)
         feat1 = self.dropout1(fusion_feat)
         feat2 = self.linear1(feat1)
         feat3 = self.linear2(feat2)
         feat3 = torch.squeeze(feat3)
-        result = F.softmax(feat3)
+        result = F.sigmoid(feat3)
 
         return result
 

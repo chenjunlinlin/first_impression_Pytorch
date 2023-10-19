@@ -7,7 +7,7 @@ import pandas as pd
 resource_path = "/raid5/chenjunlin/DataSets/first_impression/"
 destpath_rgb = ["trainframes_face2", "validationframes_face2"]
 destpath_global = ["trainframes_global", "validationframes_global"]
-resource_flow = ["train_flow", "validatin_flow"]
+resource_flow = ["train_flow", "validation_flow"]
 destpath_flow = ["trainface_flow2", "validationface_flow2"]
 suffix = ".jpg"
 add_flow_path = []
@@ -56,9 +56,10 @@ def process_flow(videos_path, i):
 
 if __name__ == "__main__":
 
-    N = 16
+    N = 2
 
-    videos_list = pd.read_csv("dataset/train.csv")["VideoName"]
+    # videos_list = pd.read_csv("dataset/val.csv")["VideoName"]
+    videos_list = ['./dataset/train/training80_31/syTTeox8Yaw.003.mp4', './dataset/train/training80_59/xyWpSrfFlQw.004.mp4']
     processes = []
     for i in range(N):
         per_len = len(videos_list) // N
