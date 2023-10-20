@@ -1,5 +1,4 @@
 from model import model_LSTM
-from model import init_model
 from data import dataset
 import torch
 import torch.nn as nn
@@ -8,20 +7,16 @@ import tqdm
 import os
 from tensorboardX import SummaryWriter
 import options
-from collections import OrderedDict
-from utils.extract_frames import mkdir_p
 import json
 from datetime import datetime
 from model.network import set_parameter_requires_grad
-import math
-from utils import logs
+from utils import logs, train_utils
 
 import warnings
 warnings.filterwarnings("ignore")
 
 args = options.get_args()
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-devices = [0]
+train_utils.get_cudainfo()
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 def train(epoch):
@@ -29,9 +24,9 @@ def train(epoch):
     train_loss = 0
     train_Blloss = 0
     MACCS = 0
-    total_iter = len(trainset) // args.batch_size
+    total_iter = len(train_loader.dataset) // args.batch_size
     for video_feat, audio_feat, label in tqdm.tqdm(train_loader, desc='epoch:{}'.format(epoch)):
-        if iscuda :
+        if args.iscuda :
             # video_feat, flow_feat, audio_feat, label = video_feat.cuda(), flow_feat.cuda(), audio_feat.cuda(), label.cuda()
             video_feat, audio_feat, label = video_feat.cuda(), audio_feat.cuda(), label.cuda()
         if epoch == 1 and args.backbone.startswith("resnet"):
@@ -62,10 +57,10 @@ def val(epoch):
     model.eval()
     val_loss = 0
     MACCS = 0
-    total_iter = len(valset) // args.batch_size
+    total_iter = len(val_loader.dataset) // args.batch_size
     with torch.no_grad():
         for video_feat, audio_feat, label in tqdm.tqdm(val_loader, desc='Epoch: {}'.format(epoch)):
-            if iscuda :
+            if args.iscuda :
                 # video_feat, flow_feat, audio_feat, label = video_feat.cuda(), flow_feat.cuda(), audio_feat.cuda(), label.cuda()
                 video_feat, audio_feat, label = video_feat.cuda(), audio_feat.cuda(), label.cuda()
             output = model(video_feat, audio_feat)
@@ -84,52 +79,41 @@ def val(epoch):
 
 if __name__=='__main__' :
 
-    iscuda = args.iscuda
-    if torch.cuda.is_available and iscuda :
-        iscuda = True
-    else : iscuda = False
+    train_utils.set_random_seed(seed=324)
 
-    trainset = dataset.MY_DATASET(video_dir=args.train_video_dir, flow_dir=args.train_flow_dir, audio_dir=args.train_audio_dir, csv_file=args.train_csv_path, num_flow=args.num_flow, n=args.N)
-    valset = dataset.MY_DATASET(video_dir=args.val_video_dir, flow_dir=args.val_flow_dir, audio_dir=args.val_audio_dir, csv_file=args.val_csv_path, num_flow=args.num_flow, n=args.N)
-    
-
-    train_loader = dataloader(trainset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, drop_last=True, pin_memory=True)
-    val_loader = dataloader(valset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers, drop_last=True, pin_memory=True)
+    train_loader = train_utils.get_dataloader(cfg=args, is_train=True)
+    val_loader = train_utils.get_dataloader(cfg=args, is_train=False)
 
     exp_name = logs.get_exp_name(args=args)
 
     writer_t = SummaryWriter("{}/{}/train".format(args.logs, exp_name))
     writer_v = SummaryWriter("{}/{}/val".format(args.logs, exp_name))
     model = model_LSTM.BIO_MODEL_LSTM(arg=args)
-    # writer_t.add_graph(model=model, input_to_model = (torch.rand(6, 6, 3, 224, 224), torch.rand(6, 6, 68)))
-    # model = vol_model.VOL_MODEL()
-    print('--------模型初始化---------')
-    if args.pretrain and os.path.exists(os.path.join(args.best_model_save_dir, "best_{}.pth".format(exp_name))):
-        state_dict = torch.load(os.path.join(args.best_model_save_dir, "best_{}.pth".format(exp_name)))
-        new_state_dict = OrderedDict()
-        for k in state_dict:
-            new_k = k.replace('module.', '')
-            new_state_dict[new_k] = state_dict[k]
-        model.load_state_dict(state_dict=new_state_dict)
-        print("预训练模型加载成功：{}".format(os.path.join(args.best_model_save_dir, "best_{}.pth".format(exp_name))))
-    else:
-        # init_model.initialize_weights(model)
-        print("无预训练模型")
-    if iscuda :
-        print("load model to cuda")
-        model = nn.DataParallel(model.cuda(), device_ids=devices)
+
+    model, start_epoch, opt_para = train_utils.get_model(cfg=args, model=model, exp_name=exp_name)
+
     criterion1 = nn.MSELoss().cuda()
     criterion2 = model_LSTM.Bell_loss(gama=args.gama, sita=args.sita)
-    # criterion2 = nn.L1Loss().cuda()
-    optimizer = torch.optim.SGD(model.parameters(), weight_decay = args.weight_decay, lr=args.lr, momentum=args.momentum)
-    # optimizer = torch.optim.Adam(model.parameters(), weight_decay = args.weight_decay, lr=args.lr)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer=optimizer, step_size=50, gamma=0.9)
-    # scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer=optimizer, T_0=5, T_mult=2, eta_min=0.001)
+   
+    optimizer = train_utils.get_opt(cfg=args, model=model, opt_para=opt_para)
+    scheduler = train_utils.get_scheduler(cfg=args, 
+                                          opt=optimizer,
+                                          epoch=start_epoch)
+
 
     best_model = args.__dict__
     best_model_path = os.path.join(args.logs, exp_name + ".json")
-    
-    for epoch in range(args.epochs):
+
+    checkpoint = {
+        'net': None,
+        'optimizer': None,
+        'epoch': None
+    }
+
+    if start_epoch is None:
+        start_epoch = 0
+
+    for epoch in range(start_epoch, args.epochs):
         if os.path.exists(best_model_path):
             with open(best_model_path, 'r') as f:
                 logs = json.load(f)
@@ -140,7 +124,12 @@ if __name__=='__main__' :
             best_model['MACC'] = MACC.item()
             best_model['path'] = os.path.join(args.best_model_save_dir , "best_{}.pth".format(exp_name))
             best_model['time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            torch.save(model.state_dict(), os.path.join(args.best_model_save_dir , "best_{}.pth".format(exp_name)))
+            checkpoint = train_utils.update_checkpoint(checkpoint=checkpoint,
+                net_para=model.state_dict(),
+                opt_para=optimizer.state_dict(),
+                epoch=epoch
+                )
+            torch.save(checkpoint, os.path.join(args.best_model_save_dir , "best_{}.pth".format(exp_name)))
         with open(best_model_path, 'w') as f:
             json.dump(best_model, f, indent=4, ensure_ascii=False)
         if epoch % 5 == 0 and epoch != 0:
@@ -149,7 +138,12 @@ if __name__=='__main__' :
                 best_model['val_loss'] = val_loss
                 best_model['val_MACC'] = val_MACC.item()
                 best_model['epoch num'] = epoch
-            torch.save(model.state_dict(), os.path.join(args.model_save_dir, exp_name) + '{}.pth'.format(epoch))
+                checkpoint = train_utils.update_checkpoint(checkpoint=checkpoint,
+                net_para=model.state_dict(),
+                opt_para=optimizer.state_dict(),
+                epoch=epoch
+                )
+            torch.save(checkpoint, os.path.join(args.model_save_dir, exp_name) + '{:04d}.pth'.format(epoch))
         scheduler.step()
     writer_t.close()
     writer_v.close()

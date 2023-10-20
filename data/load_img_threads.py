@@ -3,6 +3,9 @@ import os
 from PIL import Image
 import torch
 from torchvision import transforms
+import time
+import numpy as np
+import cv2
 
 lock = threading.Lock()
 
@@ -21,9 +24,12 @@ class Load_imgs_thread(threading.Thread):
         global imgs_path
         global imgs
         with lock:
-            while(imgs_path):   
+            while(imgs_path):  
                 img_path = imgs_path.pop()
-                img = Image.open(img_path)
+                with open(img_path, "rb") as f:
+                    data = f.read()
+                img_str = np.frombuffer(data, dtype=np.uint8)
+                img = cv2.imdecode(img_str, flags=cv2.IMREAD_COLOR)
                 img = transform(img)
                 img = img.unsqueeze(dim=0)
                 if imgs is None:
@@ -31,6 +37,14 @@ class Load_imgs_thread(threading.Thread):
                 else:
                     imgs = torch.cat((img, imgs), dim=0)
 
+                # img_path = imgs_path.pop()
+                # img = Image.open(img_path)
+                # img = transform(img)
+                # img = img.unsqueeze(dim=0)
+                # if imgs is None:
+                #     imgs = img
+                # else:
+                #     imgs = torch.cat((img, imgs), dim=0)
 
 def load_img(frames_path:str, num_threads:int):
     """

@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 from torch.utils.data import Dataset
 import torchvision.transforms as transforms
+import time
 
 import sys
 sys.path.append(os.path.dirname(__file__))
@@ -45,10 +46,8 @@ def _load_audio_input(audio_dir, video_name, suffix=".wav_st.csv"):
 
     return audio_input
 
-def _load_video_input(video_path, sampler, num_img, num_threads=8):
-    frames_list = os.listdir(video_path)
+def _load_video_input(video_path, frames_list, sampler, num_threads=2):
     frames_list.sort()
-    sampler = _get_sampler(total=len(frames_list), num_sam=num_img)
     frames_path = []
     for i in sampler:
         frames_path.append(os.path.join(video_path, frames_list[i]))
@@ -71,23 +70,26 @@ def _get_sampler(total, num_sam):
     return sampler
 
 class MY_DATASET(Dataset):
-    def __init__(self, video_dir, flow_dir, audio_dir, csv_file, num_flow, n):
-        self.csv = pd.read_csv(csv_file)
-        self.audio_dir = audio_dir
-        self.video_dir = video_dir
-        self.flow_dir = flow_dir
-        self.num_flow = num_flow
-        self.N = n
+    def __init__(self, cfg, is_train:bool):
+        self.csv_path = cfg.train_csv_path if is_train else cfg.val_csv_path
+        self.csv = pd.read_csv(self.csv_path)
+        self.audio_dir = cfg.train_audio_dir if is_train else cfg.val_audio_dir
+        self.video_dir = cfg.train_video_dir if is_train else cfg.val_video_dir
+        self.flow_dir = cfg.train_flow_dir if is_train else cfg.val_flow_dir
+        self.num_flow = cfg.num_flow
+        self.N = cfg.N
+        self.videos_name = self.csv["VideoName"]
+        self.cfg = cfg
 
     def __getitem__(self, index):
-        video_name = self.csv.values[index, 0]
+        video_name = self.videos_name[index]
         
         if video_name.replace(".mp4", "") in lose_video:
-            video_name = self.csv.values[index+1, 0]
+            video_name = self.videos_name[index+1]
 
         video_path = os.path.join(self.video_dir, video_name.replace(".mp4", ''))
 
-        imgs = [img for img in os.listdir(video_path)]
+        imgs = [img for img in os.listdir(video_path) if img != '.ipynb_checkpoints']
         total = len(imgs)
 
         sampler = _get_sampler(total=total,
@@ -96,13 +98,13 @@ class MY_DATASET(Dataset):
         label = self.csv.values[index, 1:].astype(dtype=np.float32)
         label = torch.as_tensor(label, dtype=torch.float32)
 
-        audio_input = _load_audio_input(self.audio_dir,
+        audio_input = _load_audio_input(audio_dir=self.audio_dir,
                                         video_name=video_name)
 
         video_input = _load_video_input(video_path=video_path,
+                                        frames_list=imgs,
                                         sampler=sampler,
-                                        num_img=self.N)
-
+                                        num_threads=self.cfg.num_threads)
 
         return video_input, audio_input, label
     
