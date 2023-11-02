@@ -25,6 +25,7 @@ def filter_state_dict(state_dict, remove_name='fc'):
         new_state_dict[key] = state_dict[key]
     return new_state_dict
 
+
 def set_parameter_requires_grad(model, freezing):
     if freezing:
         for param in model.parameters():
@@ -33,6 +34,7 @@ def set_parameter_requires_grad(model, freezing):
         for param in model.parameters():
             param.requires_grad = True
 
+
 def get_resnet_model(outputdim, pretrained, progress, model_name='resnet18'):
     try:
         model = func_dict[model_name]
@@ -40,8 +42,11 @@ def get_resnet_model(outputdim, pretrained, progress, model_name='resnet18'):
         print("model:{} isn't existed".format(model_name))
     instance = model(pretrained=pretrained, progress=progress)
     set_parameter_requires_grad(instance, freezing=pretrained)
-    in_features = instance.fc.in_features
-    instance.fc = nn.Linear(in_features=in_features, out_features=outputdim)
+    # # change the dim of output
+    # in_features = instance.fc.in_features
+    # instance.fc = nn.Linear(in_features=in_features, out_features=outputdim)
+
+    instance.fc = torch.nn.Identity()
 
     return instance
 
@@ -94,9 +99,11 @@ class BasicBlock(nn.Module):
         if norm_layer is None:
             norm_layer = nn.BatchNorm2d
         if groups != 1 or base_width != 64:
-            raise ValueError('BasicBlock only supports groups=1 and base_width=64')
+            raise ValueError(
+                'BasicBlock only supports groups=1 and base_width=64')
         if dilation > 1:
-            raise NotImplementedError("Dilation > 1 not supported in BasicBlock")
+            raise NotImplementedError(
+                "Dilation > 1 not supported in BasicBlock")
         # Both self.conv1 and self.downsample layers downsample the input when stride != 1
         self.conv1 = conv3x3(inplanes, planes, stride)
         self.bn1 = norm_layer(planes)
@@ -227,18 +234,17 @@ class ResNet(nn.Module):
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2,
                                        dilate=replace_stride_with_dilation[2])
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
-        
+
         if self.use_last_fc:
             self.fc = nn.Linear(512 * block.expansion, num_classes)
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
-                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                nn.init.kaiming_normal_(
+                    m.weight, mode='fan_out', nonlinearity='relu')
             elif isinstance(m, (nn.BatchNorm2d, nn.GroupNorm)):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
-
-
 
         # Zero-initialize the last BN in each residual branch,
         # so that the residual branch starts with zeros, and each residual block behaves like an identity.
@@ -246,9 +252,11 @@ class ResNet(nn.Module):
         if zero_init_residual:
             for m in self.modules():
                 if isinstance(m, Bottleneck):
-                    nn.init.constant_(m.bn3.weight, 0)  # type: ignore[arg-type]
+                    # type: ignore[arg-type]
+                    nn.init.constant_(m.bn3.weight, 0)
                 elif isinstance(m, BasicBlock):
-                    nn.init.constant_(m.bn2.weight, 0)  # type: ignore[arg-type]
+                    # type: ignore[arg-type]
+                    nn.init.constant_(m.bn2.weight, 0)
 
     def _make_layer(self, block: Type[Union[BasicBlock, Bottleneck]], planes: int, blocks: int,
                     stride: int = 1, dilate: bool = False) -> nn.Sequential:
@@ -436,78 +444,95 @@ def wide_resnet101_2(pretrained: bool = False, progress: bool = True, **kwargs: 
     return _resnet('wide_resnet101_2', Bottleneck, [3, 4, 23, 3],
                    pretrained, progress, **kwargs)
 
+
 class Time_model(nn.Module):
-    def __init__(self, arg, *args, **kwargs) -> None:
+    def __init__(self, start_dim, end_dim, T_dim, *args, **kwargs) -> None:
         super(Time_model, self).__init__(*args, **kwargs)
 
-        self.pos_embedding = nn.Parameter(torch.randn(1, arg.N, 512))
-        self.embeding = nn.Linear(arg.dim_img, 512)
-        self.trans_layer = nn.TransformerEncoderLayer(d_model=512, nhead=8, dropout=0.2, dim_feedforward=2048, batch_first=True)
-        self.transformer = nn.TransformerEncoder(encoder_layer=self.trans_layer, num_layers=3)
-        self.dropout = nn.Dropout(0.2)
-        self.mlp_layer = nn.Linear(512, arg.dim_img)
+        self.pos_embedding = nn.Parameter(torch.randn(1, T_dim, 512))
+        self.embeding = nn.Linear(start_dim, 512)
+        self.trans_layer = nn.TransformerEncoderLayer(d_model=512,
+                                                      nhead=8, dropout=0.2, dim_feedforward=2048, batch_first=True)
+        self.transformer = nn.TransformerEncoder(
+            encoder_layer=self.trans_layer, num_layers=2)
+        self.dropout = nn.Dropout(0.5)
+        self.mlp_layer = nn.Linear(512, end_dim)
 
     def forward(self, input):
         X1 = self.embeding(input)
         X2 = self.pos_embedding + X1
-        X3 = self.dropout(X2)
-        X4 = F.relu(self.transformer(X3)[:, -1, :])
-        result = F.relu(self.mlp_layer(X4))
-        
+        X3 = self.transformer(X2)
+        X4 = self.dropout(X3)
+        result = self.mlp_layer(X4)
+
         return result
+
 
 class Audio_model(nn.Module):
     def __init__(self, arg, *args, **kwargs) -> None:
         super(Audio_model, self).__init__(*args, **kwargs)
 
-        self.conv1d_layer1 = nn.Conv1d(in_channels=68, out_channels=68, kernel_size=3, stride=2)
-        self.conv1d_layer2 = nn.Conv1d(in_channels=68, out_channels=128, kernel_size=3, stride=2)
+        self.conv1d_layer1 = nn.Conv1d(in_channels=68, out_channels=68,
+                                       kernel_size=3, stride=2)
+        self.conv1d_layer2 = nn.Conv1d(in_channels=68, out_channels=128,
+                                       kernel_size=3, stride=2)
         self.embeding = nn.Linear(128, 512)
         self.pos_embedding = nn.Parameter(torch.randn(1, 74, 512))
-        self.trans_layer = nn.TransformerEncoderLayer(d_model=512, nhead=8, dropout=0.2, dim_feedforward=2048, batch_first=True)
-        self.transfomer = nn.TransformerEncoder(encoder_layer=self.trans_layer, num_layers=6)
+        self.trans_layer = nn.TransformerEncoderLayer(d_model=512, nhead=8,
+                                                      dropout=0.2, dim_feedforward=2048, batch_first=True)
+        self.transfomer = nn.TransformerEncoder(
+            encoder_layer=self.trans_layer, num_layers=3)
         self.mpl_layer = nn.Linear(512, arg.dim_audio)
-        
-
+        self.dropout = nn.Dropout(0.2)
 
     def forward(self, audio_input):
         audio_input = torch.transpose(audio_input, dim0=1, dim1=2)
-        X = F.relu(self.conv1d_layer1(audio_input))
-        X = F.relu(self.conv1d_layer2(X)) # X:(N, C, L)
-        X = torch.transpose(X, 1, 2)
-        X = F.relu(self.embeding(X))
-        X = self.pos_embedding + X
-        X = F.relu(self.transfomer(X)[:, -1, :])
-        X = F.relu(self.mpl_layer(X))
+        X1 = self.conv1d_layer1(audio_input)
+        X2 = self.conv1d_layer2(X1)  # X:(N, C, L)
+        X3 = torch.transpose(X2, 1, 2)
+        X4 = self.embeding(X3)
+        X5 = self.pos_embedding + X4
+        X5 = self.dropout(X5)
+        X6 = self.transfomer(X5)
+        # X = self.mpl_layer(X6)
 
-        return X
-    
+        return X6
+
+
 def get_audio_model(args):
     """
     get model of audio
     """
-    instance = Audio_model(arg=args)
+    if args.use_6MCFF:
+        instance = nn.Sequential(
+            # nn.Linear(136, 68),
+            nn.Linear(68, 512)
+        )
+    else:
+        instance = Audio_model(arg=args)
     return instance
 
-def get_vit_model(image_size = 256, patch_size = 32, num_classes = 1000, dim = 1024,depth = 6, heads = 16, mlp_dim = 2048, dropout = 0.1,emb_dropout = 0.1
-):
+
+def get_vit_model(image_size=256, patch_size=32, num_classes=1000, dim=1024, depth=6, heads=16, mlp_dim=2048, dropout=0.1, emb_dropout=0.1
+                  ):
     """
     get model of vit
 
     num_classes is dim of feature about img
     """
     instance = ViT(
-        image_size = image_size,
-        patch_size = patch_size,
-        num_classes = num_classes,
-        dim = dim,
-        depth = depth,
-        heads = heads,
-        mlp_dim = mlp_dim,
-        dropout = dropout,
-        emb_dropout = emb_dropout
+        image_size=image_size,
+        patch_size=patch_size,
+        num_classes=num_classes,
+        dim=dim,
+        depth=depth,
+        heads=heads,
+        mlp_dim=mlp_dim,
+        dropout=dropout,
+        emb_dropout=emb_dropout
     )
     return instance
+
 
 def get_model(args):
     """
@@ -515,16 +540,35 @@ def get_model(args):
     if args.backbone == "vit":
         return get_vit_model(image_size=args.img_size, num_classes=args.dim_img)
     else:
-        return get_resnet_model(outputdim=args.dim_img, pretrained= not args.pretrain, progress=True, model_name=args.backbone)
+        return get_resnet_model(outputdim=args.dim_img, pretrained=not args.pretrain, progress=True, model_name=args.backbone)
+
 
 def get_time_model(args):
     """
     return model of modeling time
     """
-    instance = Time_model(arg=args)
+    if args.use_6MCFF:
+        instance = Time_model(start_dim=512, end_dim=64, T_dim=args.N)
+    else:
+        instance = Time_model(start_dim=512, end_dim=64, T_dim=args.N)
     return instance
+
 
 func_dict = {
     'resnet18': resnet18,
+    'resnet34': resnet34,
     'resnet50': resnet50
 }
+
+
+class Lstm_modle(nn.Module):
+    def __init__(self, input, out_put, *args, **kwargs) -> None:
+        super(Lstm_modle, self).__init__(*args, **kwargs)
+        self.lstm1 = nn.LSTM(input, 128, batch_first=True)
+        self.lstm2 = nn.LSTM(128, out_put, batch_first=True)
+
+    def forward(self, input):
+        X1, _ = self.lstm1(input)
+        X2, _ = self.lstm2(X1)
+
+        return X2
