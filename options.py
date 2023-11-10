@@ -1,4 +1,5 @@
 import argparse
+from re import T
 
 
 parser = argparse.ArgumentParser()
@@ -52,12 +53,12 @@ parser.add_argument('--scheduler', default="StepLR",
 parser.add_argument('--lr', default=0.05)
 parser.add_argument('--num_flow', default=3, help="num of flows per frame")
 parser.add_argument('--momentum', default=0.9)
-parser.add_argument('--weight_decay', default=1e-3)
+parser.add_argument('--weight_decay', default=2e-3)
 parser.add_argument('--epochs', default=300)
 parser.add_argument('--iscuda', default=True)
 parser.add_argument('--pretrain', default=True)
 parser.add_argument("--_continue", default=False)
-parser.add_argument('--backbone', default='resnet34', type=str)
+parser.add_argument('--backbone', default='resnet18', type=str)
 parser.add_argument('--gama', default=0)
 parser.add_argument('--sita', default=9)
 parser.add_argument('--img_size', default=224)
@@ -69,7 +70,7 @@ parser.add_argument("--DP", default=True)
 
 parser.add_argument('--name', default='exp')
 parser.add_argument(
-    '--dsc', default='本次实验测试，face+encoder——audio+trans——fusion+trans——time')
+    '--dsc', default='本次实验测试，不使用全局信息,使用sum的融合层及warmup，face+encoder——audio+trans——fusion_sum——time N==6, size=(224,224)')
 
 parser.add_argument('--logs', type=str, default='./logs')
 

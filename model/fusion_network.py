@@ -33,6 +33,7 @@ class Attention(nn.Module):
         self.scale = dim_head ** -0.5
 
         self.norm = nn.LayerNorm(dim)
+        self.norm2 = nn.LayerNorm(dim)
 
         self.attend = nn.Softmax(dim=-1)
         self.dropout = nn.Dropout(dropout)
@@ -47,6 +48,7 @@ class Attention(nn.Module):
 
     def forward(self, x, querry):
         x = self.norm(x)
+        querry = self.norm2(querry)
 
         kv = self.to_kv(x).chunk(2, dim=-1)
         q = self.to_q(querry)

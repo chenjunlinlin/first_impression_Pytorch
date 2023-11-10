@@ -5,7 +5,8 @@ import torch.nn as nn
 from torch.utils.data import DataLoader as dataloader
 import tqdm
 import os
-from tensorboardX import SummaryWriter
+from torch.utils.tensorboard import SummaryWriter
+from model import network
 import options
 import json
 from datetime import datetime
@@ -29,10 +30,11 @@ def train(epoch):
     total_iter = len(train_loader.dataset) // args.batch_size
     for video_feat, audio_feat, label in tqdm.tqdm(train_loader, desc='epoch:{}'.format(epoch)):
         if args.iscuda:
-            # video_feat, flow_feat, audio_feat, label = video_feat.cuda(), flow_feat.cuda(), audio_feat.cuda(), label.cuda()
+            # video_feat, gloaudio_feat, audio_feat, label = video_feat.cuda(
+            # ), gloaudio_feat.cuda(), audio_feat.cuda(), label.cuda()
             video_feat, audio_feat, label = video_feat.cuda(
             ), audio_feat.cuda(), label.cuda()
-        if epoch == 2 and args.backbone.startswith("resnet"):
+        if epoch == 15 and args.backbone.startswith("resnet"):
             model1 = model.module if args.DP else model
             set_parameter_requires_grad(model=model1, freezing=False)
         optimizer.zero_grad()
@@ -71,7 +73,8 @@ def val(epoch):
     with torch.no_grad():
         for video_feat, audio_feat, label in tqdm.tqdm(val_loader, desc='Epoch: {}'.format(epoch)):
             if args.iscuda:
-                # video_feat, flow_feat, audio_feat, label = video_feat.cuda(), flow_feat.cuda(), audio_feat.cuda(), label.cuda()
+                # video_feat, gloaudio_feat, audio_feat, label = video_feat.cuda(
+                # ), gloaudio_feat.cuda(), audio_feat.cuda(), label.cuda()
                 video_feat, audio_feat, label = video_feat.cuda(
                 ), audio_feat.cuda(), label.cuda()
             output = model(video_feat, audio_feat)
@@ -91,7 +94,7 @@ def val(epoch):
 
 if __name__ == '__main__':
 
-    # train_utils.set_random_seed(seed=args.seed)
+    train_utils.set_random_seed(seed=args.seed)
 
     train_loader = train_utils.get_dataloader(cfg=args, is_train=True)
     val_loader = train_utils.get_dataloader(cfg=args, is_train=False)
@@ -134,6 +137,8 @@ if __name__ == '__main__':
             with open(best_model_path, 'r') as f:
                 logs = json.load(f)
                 best_model["loss"] = logs["loss"]
+        network.warmup(optimizer=optimizer, Lr=args.lr,
+                       total_epoch=15, cur_epoch=epoch)
         loss, MACC = train(epoch)
         if 'loss' not in best_model or loss < best_model['loss']:
             best_model['loss'] = loss
@@ -148,7 +153,7 @@ if __name__ == '__main__':
                                                        )
             torch.save(checkpoint, os.path.join(
                 args.best_model_save_dir, "best_{}.pth".format(exp_name)))
-        if epoch % 5 == 0 and epoch != 0:
+        if epoch % 3 == 0 and epoch != 0:
             val_loss, val_MACC = val(epoch)
             if 'val_loss' not in best_model or val_loss < best_model['val_loss']:
                 best_model['val_loss'] = val_loss

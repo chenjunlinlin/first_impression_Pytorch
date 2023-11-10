@@ -3,5 +3,7 @@
         "./src_py"
     ],
     "python.analysis.typeCheckingMode": "off",
-    "editor.formatOnSave": true
+    "editor.formatOnSave": true,
+    "translate.youdao.appKey": "2471912b44770c82",
+    "translate.youdao.appSecret": "GUf41KJaV3JzkMdo5nlRdEanJ23CPrML"
 }

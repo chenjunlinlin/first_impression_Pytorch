@@ -117,6 +117,8 @@ class MY_DATASET(Dataset):
 
         video_path = os.path.join(self.video_dir, video_name.replace(
             ".mp4", ''))
+        # video_path = os.path.join(self.video_dir, video_name.replace(
+        #     ".mp4", ''), video_name.replace(".mp4", '') + "_aligned")
 
         imgs = [img for img in os.listdir(
             video_path) if img != '.ipynb_checkpoints']
@@ -144,6 +146,8 @@ class MY_DATASET(Dataset):
         # global_input = _load_video_input(video_path=global_path,
         #                                  frames_list=globals,
         #                                  sampler=sampler)
+
+        # return video_input, global_input, audio_input, label
 
         return video_input, audio_input, label
 

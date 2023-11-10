@@ -146,7 +146,7 @@ def get_image_face(frames_list, flows_list=None):
                                     (frame[0][y:y+size, x:x+size, :]))
             if flows_list :
                 flow = flow_transform(flows_list[i][y:y+size, x:x+size, :])
-                # 将光流信息填充为3维
+                # Fill the optical flow information into 3 dimensions
                 padding_data = torch.zeros((1, 224, 224))
                 flow = torch.cat((flow, padding_data))
                 cropped_face_flow.append(flow)
