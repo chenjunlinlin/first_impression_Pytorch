@@ -13,6 +13,7 @@ from utils.extract_flows import mkdir_p
 import json
 import argparse
 import time
+from model import network
 from model.network import set_parameter_requires_grad
 from torch.utils.tensorboard import SummaryWriter
 import options
@@ -42,6 +43,7 @@ class Trainer:
                  val_dataloader: DataLoader,
                  optimizer: torch.optim.Optimizer,
                  criterion,
+                 scheduler,
                  exp_name,
                  cfg
                  ) -> None:
@@ -52,6 +54,7 @@ class Trainer:
         self.val_dataloader = val_dataloader
         self.optimizer = optimizer
         self.criterion = criterion
+        self.scheduler = scheduler
         self.model = DDP(model, device_ids=[
                          self.gpu_id], find_unused_parameters=True)
         self.cfg = cfg
@@ -135,6 +138,7 @@ class Trainer:
                         "Lr", self.optimizer.param_groups[0]['lr'], epoch*lens + idx + 1)
         else:
             self.val_dataloader.sampler.set_epoch(epoch)
+            print("================  val  ================")
             start_time = time.time()
             for idx, (xs, ys) in enumerate(self.val_dataloader):
                 xs = (x.to(self.gpu_id) for x in xs)
@@ -171,12 +175,15 @@ class Trainer:
 
     def train(self, start_epoch: int, max_epoch: int):
         for epoch in range(start_epoch, max_epoch):
+            network.warmup(optimizer=self.optimizer, Lr=self.cfg.lr,
+                           total_epoch=15, cur_epoch=epoch)
             if epoch == 2 and args.backbone.startswith("resnet"):
                 model1 = self.model.module
                 set_parameter_requires_grad(model=model1, freezing=False)
             self._run_epoch(epoch)
             if epoch % 3 == 0:
                 self._run_epoch(epoch=epoch, is_train=False)
+            self.scheduler.step()
 
 
 def main(args: argparse):
@@ -192,16 +199,21 @@ def main(args: argparse):
     model = model_LSTM.BIO_MODEL_LSTM(arg=args)
     model, start_epoch, opt_para = train_utils.ddp_get_model(
         cfg=args, model=model, exp_name=exp_name)
-    if start_epoch is None:
-        start_epoch = 0
 
     optimizer = train_utils.get_opt(cfg=args, model=model, opt_para=opt_para)
     criterion = nn.MSELoss()
+    scheduler = train_utils.get_scheduler(cfg=args,
+                                          opt=optimizer,
+                                          epoch=start_epoch)
+
+    if start_epoch is None:
+        start_epoch = 0
 
     trainer = Trainer(local_rank=local_rank, model=model,
                       optimizer=optimizer,
                       train_dataloader=train_dataloader,
                       val_dataloader=val_dataloader,
+                      scheduler=scheduler,
                       criterion=criterion, exp_name=exp_name, cfg=args)
     trainer.train(start_epoch=start_epoch, max_epoch=args.epochs)
 
