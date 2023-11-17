@@ -6,6 +6,8 @@ from collections import OrderedDict
 from torch.utils.data import DataLoader as dataloader
 import random
 import numpy as np
+from torch.utils.data.distributed import DistributedSampler
+from datetime import datetime
 
 from data import dataset
 
@@ -33,14 +35,14 @@ def get_scheduler(cfg, opt, epoch):
     if epoch is not None:
         if cfg.scheduler == "StepLR":
             scheduler = torch.optim.lr_scheduler.StepLR(
-                optimizer=opt, step_size=30, gamma=0.9, last_epoch=epoch)
+                optimizer=opt, step_size=50, gamma=0.9, last_epoch=epoch)
         if cfg.scheduler == "CosineAnnealingWarmRestarts":
             scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
                 optimizer=opt, T_0=5, T_mult=2, eta_min=0.001, last_epoch=epoch)
     else:
         if cfg.scheduler == "StepLR":
             scheduler = torch.optim.lr_scheduler.StepLR(
-                optimizer=opt, step_size=30, gamma=0.9)
+                optimizer=opt, step_size=50, gamma=0.9)
         if cfg.scheduler == "CosineAnnealingWarmRestarts":
             scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
                 optimizer=opt, T_0=5, T_mult=2, eta_min=0.001)
@@ -72,6 +74,33 @@ def get_model(cfg, model, exp_name):
         model = nn.DataParallel(model.cuda(), device_ids=cfg.devices)
     else:
         model = model.cuda()
+
+    if flag and cfg._continue:
+        return model, checkpoint['epoch'], checkpoint["optimizer"]
+
+    return model, None, None
+
+
+def ddp_get_model(cfg, model, exp_name):
+    """
+    load checkpoint for model
+    """
+    print('--------模型初始化---------')
+    flag, checkpoint = get_checkpoint(cfg=cfg, exp_name=exp_name)
+    if cfg._continue and flag:
+        model = load_model(model=model, dict=checkpoint)
+        print("模型加载成功，继续训练！！！\tEpoch:{}"
+              .format(checkpoint["epoch"]))
+    elif cfg.model_path is not None:
+        dict = torch.load(cfg.model_path)
+        model = load_model(model=model, dict=dict)
+        print("模型加载成功，开始训练！！！\nmodel from:{}"
+              .format(cfg.model_path))
+    else:
+        # init_model.initialize_weights(model)
+        print(f"开始训练,Epoch:1")
+    if cfg.iscuda:
+        print("load model to cuda")
 
     if flag and cfg._continue:
         return model, checkpoint['epoch'], checkpoint["optimizer"]
@@ -123,8 +152,18 @@ def get_dataloader(cfg, is_train: bool):
     data_set = dataset.MY_DATASET(cfg=cfg, is_train=is_train)
 
     data_loader = dataloader(data_set, batch_size=cfg.batch_size,
-                             shuffle=True, num_workers=cfg.num_workers, drop_last=True, pin_memory=True,
-                             worker_init_fn=np.random.seed())
+                             shuffle=True, num_workers=cfg.num_workers, drop_last=True, pin_memory=True)
+    return data_loader
+
+
+def ddp_get_dataloader(cfg, is_train: bool):
+
+    data_set = dataset.MY_DATASET(cfg=cfg, is_train=is_train)
+
+    data_loader = dataloader(data_set, batch_size=cfg.batch_size,
+                             shuffle=False, drop_last=True, pin_memory=True,
+                             num_workers=cfg.num_workers,
+                             sampler=DistributedSampler(data_set))
     return data_loader
 
 
@@ -148,3 +187,33 @@ def set_random_seed(seed=10, deterministic=True, benchmark=True):
         torch.backends.cudnn.deterministic = True
     if benchmark:
         torch.backends.cudnn.benchmark = True
+
+
+def update_json(model_json: dict, model, optimizer, epoch, loss, MACC, checkpoint,  best_model_save_dir, model_save_dir, exp_name, is_train: bool = True):
+    """update json of train
+    """
+    if is_train:
+        if 'loss' not in model_json or loss < model_json['loss']:
+            model_json['loss'] = loss
+            model_json['MACC'] = MACC.item()
+            model_json['path'] = os.path.join(
+                best_model_save_dir, "best_{}.pth".format(exp_name))
+            model_json['time'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            checkpoint = update_checkpoint(checkpoint=checkpoint,
+                                           net_para=model.state_dict(),
+                                           opt_para=optimizer.state_dict(),
+                                           epoch=epoch
+                                           )
+            torch.save(checkpoint, os.path.join(
+                best_model_save_dir, "best_{}.pth".format(exp_name)))
+    else:
+        if 'val_loss' not in model_json or loss < model_json['val_loss']:
+            model_json['val_loss'] = loss
+            model_json['val_MACC'] = MACC.item()
+            model_json['epoch_num'] = epoch
+            checkpoint = update_checkpoint(checkpoint=checkpoint,
+                                           net_para=model.state_dict(), opt_para=optimizer.state_dict(), epoch=epoch)
+            torch.save(checkpoint, os.path.join(
+                model_save_dir, exp_name, '{:04d}.pth'.format(epoch)))
+
+    return model_json

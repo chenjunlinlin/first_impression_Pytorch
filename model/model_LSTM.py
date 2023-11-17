@@ -30,18 +30,17 @@ class BIO_MODEL_LSTM(nn.Module):
         self.audio_branch = network.get_audio_model(args=arg)
 
         self.video_branch = network.get_model(args=arg)
-        self.global_branch = network.get_model(args=arg)
+        # self.global_branch = network.get_model(args=arg)
 
         self.timemodel = network.get_time_model(args=arg)
 
         self.dropout1 = nn.Dropout(0.5)
         self.dropout2 = nn.Dropout(0.5)
-        self.cat_linear = nn.Linear(1024, 512)
-        self.fusion_layer = fusion.Fusion(dim=512, depth=1, heads=8,
-                                          dim_head=64, mlp_dim=2048, cfg=arg)
-
+        self.cat_linear = nn.Linear(768, 512)
+        # self.fusion_layer = fusion.Fusion(dim=512, depth=1, heads=8,
+        #                                   dim_head=64, mlp_dim=2048, cfg=arg)
         self.linear2 = nn.Linear(64, 5)
-        self.init_model()
+        # self.init_model()
 
     def init_model(self):
         torch.nn.init.normal_(self.linear2.weight.data, 0.1)
@@ -114,7 +113,9 @@ class BIO_MODEL_LSTM(nn.Module):
 
     # only use local info
 
-    def forward(self, video_input, audio_input):
+    def forward(self, *input):
+        video_input = input[0]
+        audio_input = input[1]
         audio_feat = self.audio_branch(audio_input)
         if not self.cfg.use_6MCFF:
             audio_feat = self.slice_audio_features(audio_feat)
@@ -122,10 +123,10 @@ class BIO_MODEL_LSTM(nn.Module):
         video_feat = self.parallel_extract(
             model=self.video_branch, input=video_input)
 
-        fusion_feat = video_feat + audio_feat
+        # fusion_feat = video_feat + audio_feat
         # # fusion_feat = self.fusion_layer(video_feat, audio_feat)
-        # fusion_feat = torch.cat((video_feat, audio_feat), dim=-1)
-        # fusion_feat = self.cat_linear(fusion_feat)
+        fusion_feat = torch.cat((video_feat, audio_feat), dim=-1)
+        fusion_feat = self.cat_linear(fusion_feat)
         feat1 = self.dropout1(fusion_feat)
 
         # Don't use 6MCFF

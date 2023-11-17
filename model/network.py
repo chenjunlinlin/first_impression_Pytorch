@@ -44,9 +44,10 @@ def get_resnet_model(outputdim, pretrained, progress, model_name='resnet18'):
         print("model:{} isn't existed".format(model_name))
     instance = model(pretrained=pretrained, progress=progress)
     set_parameter_requires_grad(instance, freezing=pretrained)
+    instance.fc = nn.Identity()
     instance = differents_network.TDN_Net(resnet_model=instance,
-                                       use_last_fc=False)
-    # # change the dim of output
+                                          use_last_fc=False)
+    # # # change the dim of output
     # in_features = instance.fc.in_features
     # instance.fc = nn.Linear(in_features=in_features, out_features=outputdim)
 
@@ -457,8 +458,8 @@ class Time_model(nn.Module):
                                                       nhead=8, dropout=0.2, dim_feedforward=2048,
                                                       norm_first=True, batch_first=True)
         self.transformer = nn.TransformerEncoder(
-            encoder_layer=self.trans_layer, num_layers=2)
-        self.dropout = nn.Dropout(0.5)
+            encoder_layer=self.trans_layer, num_layers=1)
+        self.dropout = nn.Dropout(0.2)
         self.mlp_layer = nn.Linear(512, end_dim)
 
     def forward(self, input):
@@ -478,18 +479,18 @@ class Audio_model(nn.Module):
         self.cfg = arg
         self.conv1d_layer1 = nn.Conv1d(in_channels=68, out_channels=68,
                                        kernel_size=3, stride=2)
-        self.conv1d_layer2 = nn.Conv1d(in_channels=68, out_channels=128,
+        self.conv1d_layer2 = nn.Conv1d(in_channels=68, out_channels=256,
                                        kernel_size=3, stride=2)
-        self.embeding = nn.Linear(128, 512)
-        self.pos_embedding = nn.Parameter(torch.randn(1, 74, 512))
+        # self.embeding = nn.Linear(128, 256)
+        self.pos_embedding = nn.Parameter(torch.randn(1, 74, 256))
         self.normal = nn.BatchNorm1d(68)
-        self.trans_layer = nn.TransformerEncoderLayer(d_model=512, nhead=8,
-                                                      dropout=0.2, dim_feedforward=2048,
+        self.trans_layer = nn.TransformerEncoderLayer(d_model=256, nhead=8,
+                                                      dropout=0.2, dim_feedforward=1024,
                                                       norm_first=True,
                                                       batch_first=True)
         self.transfomer = nn.TransformerEncoder(
             encoder_layer=self.trans_layer, num_layers=3)
-        self.mpl_layer = nn.Linear(512, arg.dim_audio)
+        self.mpl_layer = nn.Linear(256, arg.dim_audio)
         self.dropout = nn.Dropout(0.2)
 
     def forward(self, audio_input):
@@ -499,13 +500,13 @@ class Audio_model(nn.Module):
         X1 = F.relu(X1)
         X2 = self.conv1d_layer2(X1)  # X:(N, C, L)
         X3 = torch.transpose(X2, 1, 2)
-        X4 = self.embeding(X3)
-        X5 = self.pos_embedding + X4
+        # X4 = self.embeding(X3)
+        X5 = self.pos_embedding + X3
         X5 = self.dropout(X5)
         X6 = self.transfomer(X5)
         # X = self.mpl_layer(X6)
 
-        return X6 + X4
+        return X6 + X3
 
 
 def get_audio_model(args):
@@ -515,7 +516,7 @@ def get_audio_model(args):
     if args.use_6MCFF:
         instance = nn.Sequential(
             # nn.Linear(136, 68),
-            nn.Linear(68, 512)
+            nn.Linear(68, args.dim_audio)
         )
     else:
         instance = Audio_model(arg=args)

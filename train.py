@@ -11,7 +11,7 @@ import options
 import json
 from datetime import datetime
 from model.network import set_parameter_requires_grad
-from utils import logs, train_utils
+from utils import Logs, train_utils
 from utils.extract_flows import mkdir_p
 
 import warnings
@@ -99,7 +99,7 @@ if __name__ == '__main__':
     train_loader = train_utils.get_dataloader(cfg=args, is_train=True)
     val_loader = train_utils.get_dataloader(cfg=args, is_train=False)
 
-    exp_name = logs.get_exp_name(args=args)
+    exp_name = Logs.get_exp_name(args=args)
     print(f"The log of this experiment is saved in “{exp_name}”")
 
     writer_t = SummaryWriter("{}/{}/train".format(args.logs, exp_name))
@@ -135,8 +135,8 @@ if __name__ == '__main__':
     for epoch in range(start_epoch + 1, args.epochs):
         if os.path.exists(best_model_path):
             with open(best_model_path, 'r') as f:
-                logs = json.load(f)
-                best_model["loss"] = logs["loss"]
+                Logs = json.load(f)
+                best_model["loss"] = Logs["loss"]
         network.warmup(optimizer=optimizer, Lr=args.lr,
                        total_epoch=15, cur_epoch=epoch)
         loss, MACC = train(epoch)

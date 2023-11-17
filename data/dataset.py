@@ -1,3 +1,5 @@
+from einops import rearrange
+from matplotlib.pylab import f
 from data.load_img_threads import load_img
 import os
 import torch
@@ -12,7 +14,8 @@ from PIL import Image
 import sys
 sys.path.append(os.path.dirname(__file__))
 
-lose_video = ['syTTeox8Yaw.003', 'xyWpSrfFlQw.004']
+lose_video = ['syTTeox8Yaw.003', 'xyWpSrfFlQw.004',
+              'aaDlp62qn60.002', 'CFK8ib0aWe8.004']
 
 transform = transforms.Compose([
     # transforms.RandomHorizontalFlip(),
@@ -66,9 +69,11 @@ def _load_video_input(video_path, frames_list, sampler, num_threads=2):
     frames_list.sort()
     frames_path = []
     for i in sampler:
-        frames_path.append(os.path.join(video_path, frames_list[i]))
-    # imgs = load_img(frames_path=frames_path,
-    #                       num_threads=num_threads).clone()
+        try:
+            frames_path.append(os.path.join(video_path, frames_list[i]))
+        except IndexError as err:
+            print(f"video_name is {video_path}, the frame is {i} is None!!!")
+    # for i in sampler:
     imgs = None
     for img_path in frames_path:
         img = Image.open(img_path)
@@ -96,6 +101,24 @@ def _get_sampler(total, num_sam):
     return sampler
 
 
+def _load_video_stack(video_path, frames_list, sampler):
+    """ According to the sampling strategy of sample, N image sets are read. Each image set is n consecutive images
+    """
+    stack = None
+    samplers = [[(s + i) for i in range(5)] for s in sampler]
+    for sam in samplers:
+        imgs = _load_video_input(video_path=video_path,
+                                 frames_list=frames_list, sampler=sam)
+        imgs = rearrange(imgs, 'n c h w -> (n c) h w')
+        imgs = imgs.unsqueeze(dim=0)
+        if stack is None:
+            stack = imgs
+        else:
+            stack = torch.cat((stack, imgs), dim=0)
+
+    return stack
+
+
 class MY_DATASET(Dataset):
     def __init__(self, cfg, is_train: bool):
         self.csv_path = cfg.train_csv_path if is_train else cfg.val_csv_path
@@ -115,14 +138,14 @@ class MY_DATASET(Dataset):
         if video_name.replace(".mp4", "") in lose_video:
             video_name = self.videos_name[index+1]
 
-        video_path = os.path.join(self.video_dir, video_name.replace(
-            ".mp4", ''))
         # video_path = os.path.join(self.video_dir, video_name.replace(
-        #     ".mp4", ''), video_name.replace(".mp4", '') + "_aligned")
+        #     ".mp4", ''))
+        video_path = os.path.join(self.video_dir, video_name.replace(
+            ".mp4", ''), video_name.replace(".mp4", '') + "_aligned")
 
         imgs = [img for img in os.listdir(
             video_path) if img != '.ipynb_checkpoints']
-        total = len(imgs)
+        total = len(imgs) - 5
 
         # global_path = os.path.join(self.global_dir, video_name.replace(
         #     ".mp4", ''))
@@ -130,6 +153,8 @@ class MY_DATASET(Dataset):
         #     global_path) if glo != '.ipynb_checkpoints']
 
         sampler = _get_sampler(total=total, num_sam=self.N)
+        if any(num < 0 for num in sampler):
+            print(sampler, video_name)
 
         label = self.csv.values[index, 1:].astype(dtype=np.float32)
         label = torch.as_tensor(label, dtype=torch.float32)
@@ -138,10 +163,10 @@ class MY_DATASET(Dataset):
                                         video_name=video_name,
                                         use_6MCFF=self.cfg.use_6MCFF)
 
-        video_input = _load_video_input(video_path=video_path,
+        video_input = _load_video_stack(video_path=video_path,
                                         frames_list=imgs,
                                         sampler=sampler,
-                                        num_threads=self.cfg.num_threads)
+                                        )
 
         # global_input = _load_video_input(video_path=global_path,
         #                                  frames_list=globals,
@@ -149,7 +174,7 @@ class MY_DATASET(Dataset):
 
         # return video_input, global_input, audio_input, label
 
-        return video_input, audio_input, label
+        return (video_input, audio_input), label
 
     def __len__(self):
         return self.csv.values.shape[0]
