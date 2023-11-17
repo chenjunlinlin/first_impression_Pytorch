@@ -13,6 +13,7 @@ from utils.extract_flows import mkdir_p
 import json
 import argparse
 import time
+from model.network import set_parameter_requires_grad
 from torch.utils.tensorboard import SummaryWriter
 import options
 
@@ -142,7 +143,7 @@ class Trainer:
                 total_MACC += MACC
                 total_loss += loss
                 end_time = time.time()
-                if self.gpu_id == 0 and (idx + 1) % 20 == 0 or (idx + 1) == lens:
+                if self.gpu_id == 0 and ((idx + 1) % 20 == 0 or (idx + 1) == lens):
                     print(
                         "   == step: [{:3}/{}] [{}/{}] | loss: {:.3f} | MACC: {:6.3f}% | time: {:2.1f}s/it".format(
                             idx + 1,
@@ -170,6 +171,9 @@ class Trainer:
 
     def train(self, start_epoch: int, max_epoch: int):
         for epoch in range(start_epoch, max_epoch):
+            if epoch == 2 and args.backbone.startswith("resnet"):
+                model1 = self.model.module
+                set_parameter_requires_grad(model=model1, freezing=False)
             self._run_epoch(epoch)
             if epoch % 3 == 0:
                 self._run_epoch(epoch=epoch, is_train=False)
