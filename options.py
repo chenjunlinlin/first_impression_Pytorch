@@ -38,7 +38,6 @@ parser.add_argument('--model_save_dir', default='./models/checkpoints/',
                     type=str, help='模型保存地址')
 parser.add_argument('--model_path', default=None,
                     type=str, help='模型地址，可指定模型权重')
-实现
 
 parser.add_argument('--N', default=6, type=int, help='视频被分成的份数')
 parser.add_argument('--num_threads', default=2,

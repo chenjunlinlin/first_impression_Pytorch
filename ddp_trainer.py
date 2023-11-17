@@ -113,7 +113,7 @@ class Trainer:
                 total_MACC += MACC
                 total_loss += loss
                 end_time = time.time()
-                if self.gpu_id == 0 and (idx + 1) % 20 == 0 or (idx + 1) == lens:
+                if self.gpu_id == 0 and ((idx + 1) % 10 == 0 or (idx + 1) == lens):
                     print(
                         "   == step: [{:3}/{}] [{}/{}] | loss: {:.3f} | MACC: {:6.3f}% | time: {:2.1f}s/it".format(
                             idx + 1,
@@ -189,7 +189,7 @@ def main(args: argparse):
     model, start_epoch, opt_para = train_utils.ddp_get_model(
         cfg=args, model=model, exp_name=exp_name)
     if start_epoch is None:
-        start_epoch = 1
+        start_epoch = 0
 
     optimizer = train_utils.get_opt(cfg=args, model=model, opt_para=opt_para)
     criterion = nn.MSELoss()
